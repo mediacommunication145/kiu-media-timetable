@@ -288,6 +288,17 @@ async function decide(state, entry, date, action, reason) {
   if (action === 'confirm') progs.forEach(p => state.statusRows.unshift({ date, subject, program: p, status: 'Confirmed', reason: '' }));
   await saveStatus(state.statusRows);
 }
+function targetDateForEntry(e) {
+  if (!e) return pktNow().date;
+  if (e.date) return e.date;
+  const today = pktNow().date;
+  const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const cur = names.indexOf(weekdayOf(today)), tgt = names.indexOf(e.day);
+  if (cur < 0 || tgt < 0) return today;
+  const d = new Date(today + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + ((tgt - cur + 7) % 7));
+  return d.toISOString().slice(0, 10);
+}
 function findEntry(state, id) { return state.entries.find(e => e.id === id); }
 
 module.exports = async function handler(req, res) {
@@ -554,7 +565,7 @@ module.exports = async function handler(req, res) {
         const state = await loadState();
         const e = findEntry(state, b.entryId);
         if (!e && p !== '/api/admin/uncancel-class') return send(res, 404, { error: 'Class not found.' }, 'application/json');
-        const date = String(b.date || pktNow().date);
+        const date = String(b.date || targetDateForEntry(e));
         if (e) {
           if (p === '/api/admin/cancel-class') await decide(state, e, date, 'cancel', String(b.reason || '').trim());
           else if (p === '/api/admin/confirm-class') await decide(state, e, date, 'confirm', '');
