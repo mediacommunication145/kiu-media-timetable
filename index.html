@@ -155,12 +155,6 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
 .chooser-emoji{font-size:46px;display:block;line-height:1.1}
 .chooser-title{font-size:21px;font-weight:700;color:#1b3a5f;display:block;margin-top:8px}
 .chooser-sub{color:#5a6b82;display:block;margin-top:3px;font-size:14px}
-.chooser-admin{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;margin-top:14px;padding:13px;border:2px dashed #b9c8dc;border-radius:14px;background:#f8fafc;cursor:pointer;font:inherit;transition:border-color .15s ease, background .15s ease}
-.chooser-admin:hover{border-color:#c9a227;background:#fffaf0}
-.chooser-admin-emoji{font-size:26px;line-height:1}
-.chooser-admin-text{text-align:left}
-.chooser-admin-title{font-size:16px;font-weight:700;color:#1b3a5f;display:block}
-.chooser-admin-sub{color:#5a6b82;display:block;font-size:13px;margin-top:1px}
 </style>
 </head>
 <body>
@@ -203,11 +197,6 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
           <span class="chooser-sub">See your teaching schedule</span>
         </button>
       </div>
-      <button type="button" class="chooser-admin" id="chooseAdmin">
-        <span class="chooser-admin-emoji">🔐</span>
-        <span class="chooser-admin-text"><span class="chooser-admin-title">Admin Panel</span>
-        <span class="chooser-admin-sub">For the department office — login required</span></span>
-      </button>
     </div>
     <div class="card" id="appCard" style="border:2px solid #d9a441; background:#fffaf0">
       <h2>📱 Get the Android App</h2>
@@ -1501,7 +1490,6 @@ function choosePortal(side){
 }
 $("chooseStudent").addEventListener("click", function(){ choosePortal("student"); });
 $("chooseTeacher").addEventListener("click", function(){ choosePortal("teacher"); });
-$("chooseAdmin").addEventListener("click", function(){ $("adminToggleBtn").click(); });
 $("portalBack").addEventListener("click", function(){ portalChosen = null; applyPortalState(); window.scrollTo({ top: 0, behavior: "smooth" }); });
 $("tabStudent").addEventListener("click", function(){
   currentView = "student";
