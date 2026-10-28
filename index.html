@@ -650,7 +650,10 @@ async function init(){
     note.textContent = "Could not load the latest timetable from the server — showing saved data instead. Please check your connection and refresh the page.";
     $("results").prepend(note);
   }
-  try{ var me = await api("/api/admin/me"); if(me.admin){ /* session exists; admin still opens via button */ } }catch(e){}
+  try{ sessionStorage.removeItem("kiu_media_admin"); }catch(e){}
+  if(serverMode){
+    try{ var me = await api("/api/admin/me"); if(me && me.admin){ await api("/api/admin/logout", "POST", {}); } }catch(e){}
+  }
 }
 
 function $(id){ return document.getElementById(id); }
@@ -1022,11 +1025,10 @@ async function loadAdminData(){
   }catch(e){}
 }
 var adminOpen = false;
+var adminUnlocked = false;
 $("adminToggleBtn").addEventListener("click", async function(){
   if(!$("adminView").classList.contains("hidden")){ showStudent(); return; }
-  if(serverMode){
-    try{ var me = await api("/api/admin/me"); if(me.admin){ showAdmin(); return; } }catch(e){}
-  } else if(sessionStorage.getItem("kiu_media_admin")==="1"){ showAdmin(); return; }
+  if(adminUnlocked){ showAdmin(); return; }
   showLogin();
 });
 $("loginBackBtn").addEventListener("click", showStudent);
@@ -1036,16 +1038,17 @@ $("loginForm").addEventListener("submit", async function(ev){
   var pw = $("adminPassword").value;
   $("loginMsg").innerHTML = "";
   if(serverMode){
-    try{ await api("/api/admin/login","POST",{password:pw}); $("adminPassword").value=""; showAdmin(); }
+    try{ await api("/api/admin/login","POST",{password:pw}); $("adminPassword").value=""; adminUnlocked = true; showAdmin(); }
     catch(e){ $("loginMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
   } else {
-    if(pw === localPassword()){ sessionStorage.setItem("kiu_media_admin","1"); $("adminPassword").value=""; showAdmin(); }
+    if(pw === localPassword()){ sessionStorage.setItem("kiu_media_admin","1"); $("adminPassword").value=""; adminUnlocked = true; showAdmin(); }
     else $("loginMsg").innerHTML = '<div class="msg err">Incorrect password.</div>';
   }
 });
 $("logoutBtn").addEventListener("click", async function(){
   if(serverMode){ try{ await api("/api/admin/logout","POST",{}); }catch(e){} }
   sessionStorage.removeItem("kiu_media_admin");
+  adminUnlocked = false;
   showStudent();
 });
 
