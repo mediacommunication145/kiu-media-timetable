@@ -317,7 +317,7 @@ module.exports = async function handler(req, res) {
       const state = await loadState();
       if (!checkPw(state, body.password || '')) return send(res, 401, { error: 'Incorrect password.' }, 'application/json');
       const secure = (req.headers['x-forwarded-proto'] || 'https') === 'https';
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'kiu_admin=' + makeSession() + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=28800' + (secure ? '; Secure' : '') });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'kiu_admin=' + makeSession() + '; HttpOnly; Path=/; SameSite=Lax' + (secure ? '; Secure' : '') });
       return res.end(JSON.stringify({ ok: true }));
     }
     if (method === 'POST' && p === '/api/admin/forgot-password') {
