@@ -660,7 +660,13 @@ function catalogFromEntries(){
 async function api(path, method, body){
   var res = await fetch(path, { method: method||"GET", cache: "no-store", headers:{"Content-Type":"application/json"}, body: body?JSON.stringify(body):undefined });
   var data = {}; try{ data = await res.json(); }catch(e){}
-  if(!res.ok) throw new Error(data.error || ("Request failed ("+res.status+")"));
+  if(!res.ok){
+    if(res.status === 401 && path.indexOf("/api/admin/") === 0 && path !== "/api/admin/login" && typeof adminUnlocked !== "undefined" && adminUnlocked){
+      adminUnlocked = false;
+      if(!$("adminView").classList.contains("hidden")){ showLogin(); $("loginMsg").innerHTML = '<div class="msg err">Your admin session has ended. Please log in again.</div>'; }
+    }
+    throw new Error(data.error || ("Request failed ("+res.status+")"));
+  }
   return data;
 }
 
@@ -687,7 +693,11 @@ async function init(){
   }
   try{ sessionStorage.removeItem("kiu_media_admin"); }catch(e){}
   if(serverMode){
-    try{ var me = await api("/api/admin/me"); if(me && me.admin){ await api("/api/admin/logout", "POST", {}); } }catch(e){}
+    var isReload = true;
+    try{ var navE = window.performance && performance.getEntriesByType ? performance.getEntriesByType("navigation")[0] : null; if(navE) isReload = (navE.type === "reload"); }catch(e){}
+    if(isReload){
+      try{ var me = await api("/api/admin/me"); if(me && me.admin){ await api("/api/admin/logout", "POST", {}); } }catch(e){}
+    }
   }
 }
 
@@ -755,8 +765,10 @@ function sortEntries(list){
 
 /* ---------- Student view ---------- */
 function fillProgramSelects(){
+  var cur = $("fProgram").value;
   var opts = db.programs.map(function(p){ return '<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>'; }).join("");
   $("fProgram").innerHTML = '<option value="">— Select Program —</option>' + opts;
+  if(cur) $("fProgram").value = cur;
 }
 function fillSectionFilter(){
   var cur = $("fSection").value;
