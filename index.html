@@ -384,7 +384,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
       <div id="importMsg"></div>
     </div>
 
-    <div class="card">
+    <div class="card" style="display:none">
       <h2>Sheet Upload — Handwritten / Image / PDF / Excel</h2>
       <p class="sub">Upload a timetable in any shape — an Excel file, a typed PDF, or a photo/scan of a handwritten page. <strong>Excel and typed PDFs</strong> are read right here into the preview box below: check or adjust the rows, then import with one click. A <strong>handwritten or photo sheet</strong> cannot be auto-read by the website alone — it is saved under <strong>Pending Sheets</strong>; send the same sheet to Muse in chat and it will be read, adjusted and returned as a ready-to-import file.</p>
       <div class="actions no-print">
@@ -404,7 +404,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
       <div id="pendingSheets"></div>
     </div>
 
-    <div class="card">
+    <div class="card" style="display:none">
       <h2>Timetable PDF / Image</h2>
       <p class="sub">Upload the department's official timetable as a PDF or an image (photo / scan). Students will get a View / Download button for this file on the student page. For automatic, searchable class entries, use the CSV import above.</p>
       <div id="fileAdminInfo" style="margin-bottom:10px"></div>
@@ -528,7 +528,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
   <div class="wrap">
     Department of Media and Communication, Karakoram International University, Gilgit-Baltistan.<br>
     This timetable page is a department helper for students. For official notices and academic policies, please refer to KIU's official channels.<br>
-    <span style="display:inline-block;margin-top:6px">Developed by <strong>Rizwan Nazir</strong></span>
+    <span style="display:inline-block;margin-top:6px">Developed by <a href="https://www.instagram.com/rizwan_nazirr/" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline"><strong>Rizwan Nazir</strong></a> (Digital Media &amp; Marketing student)<br>Coordinated by <a href="https://www.kiu.edu.pk/departments/department-of-media-and-communication" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline"><strong>Dr. Shams ur Rehman</strong></a></span>
   </div>
 </footer>
 
@@ -595,103 +595,12 @@ async function api(path, method, body){
   return data;
 }
 
-
-/* SHEET-DATA-BEGIN — Google Sheets data layer */
-var SHEET_ID = "1E2D4gN-zUIBgpEwtoXcXnxufgOtO-raHFUgE01pS5wY";
-function dGviz(sheet){
-  return new Promise(function(resolve, reject){
-    var name = "dgv_" + sheet.replace(/\W/g, "") + "_" + Date.now();
-    var s = document.createElement("script");
-    var timer = setTimeout(function(){ done(new Error("timeout")); }, 20000);
-    function done(err, resp){
-      clearTimeout(timer);
-      try{ delete window[name]; }catch(e){ window[name] = undefined; }
-      if(s.parentNode) s.parentNode.removeChild(s);
-      if(err) reject(err); else resolve(resp);
-    }
-    window[name] = function(resp){ done(null, resp); };
-    s.onerror = function(){ done(new Error("load error")); };
-    s.src = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json;responseHandler:" + name + "&headers=1&sheet=" + encodeURIComponent(sheet);
-    document.head.appendChild(s);
-  });
-}
-function dCell(c){ if(!c) return ""; if(c.f != null && c.f !== "") return String(c.f); if(c.v == null) return ""; return String(c.v); }
-function dParse(json){
-  var tbl = json && json.table; if(!tbl) return [];
-  var heads = tbl.cols.map(function(c){ return (c.label || "").trim().toLowerCase(); });
-  return tbl.rows.map(function(r){
-    var o = {};
-    (r.c || []).forEach(function(c, i2){ o[heads[i2] || ("col" + i2)] = dCell(c); });
-    return o;
-  }).filter(function(o){ return Object.keys(o).some(function(k){ return o[k]; }); });
-}
-function dNormTime(v){
-  if(v == null) return "";
-  var s = String(v).trim();
-  var dm = s.match(/Date\(\d+,\d+,\d+,(\d+),(\d+)/);
-  if(dm){ var h = +dm[1], mi = +dm[2]; return (h < 10 ? "0" : "") + h + ":" + (mi < 10 ? "0" : "") + mi; }
-  var m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
-  if(m){ var hh = +m[1]; if(m[3]){ if(m[3].toUpperCase() === "PM" && hh < 12) hh += 12; if(m[3].toUpperCase() === "AM" && hh === 12) hh = 0; } return (hh < 10 ? "0" : "") + hh + ":" + m[2]; }
-  return s;
-}
-function dNormDate(v){
-  if(v == null) return "";
-  var s = String(v).trim();
-  function z(x){ return (x < 10 ? "0" : "") + x; }
-  var dm = s.match(/Date\((\d+),(\d+),(\d+)/);
-  if(dm) return dm[1] + "-" + z(+dm[2] + 1) + "-" + z(+dm[3]);
-  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if(m) return m[1] + "-" + z(+m[2]) + "-" + z(+m[3]);
-  var d = new Date(s);
-  if(!isNaN(d)) return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate());
-  return s;
-}
-function dCapDay(d){ d = String(d || "").trim(); return d ? d.charAt(0).toUpperCase() + d.slice(1).toLowerCase() : ""; }
-function dEntry(o, i){
-  var e = { id: "s" + (i + 1), program: (o["program"] || "").trim(), semester: String(o["semester"] || "").replace(/[^0-9]/g, ""),
-    section: (o["section"] || "").trim(), day: dCapDay(o["day"]), start: dNormTime(o["start"]), end: dNormTime(o["end"]),
-    subject: (o["subject"] || "").trim(), teacher: (o["teacher"] || "").trim(), room: (o["classroom"] || o["room"] || "").trim() };
-  var dt = dNormDate(o["date"]);
-  if(dt) e.date = dt;
-  return e;
-}
-function dStatus(o){
-  return { date: dNormDate(o["date"]), subject: (o["subject"] || "").trim(), program: (o["program"] || "").trim(), status: (o["status"] || "").trim(), reason: (o["reason"] || "").trim() };
-}
-function dWeekday(ds){ var p = ds.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]); return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][d.getDay()]; }
-function dApplyStatus(nd, sr, n){
-  if(!sr.date || !sr.subject) return;
-  var st = sr.status.toLowerCase();
-  var isCancel = st.indexOf("cancel") === 0, isConfirm = st.indexOf("confirm") === 0;
-  if(!isCancel && !isConfirm) return;
-  nd.entries.forEach(function(e){
-    if(e.subject.trim().toLowerCase() !== sr.subject.toLowerCase()) return;
-    if(sr.program && sr.program.toLowerCase() !== e.program.toLowerCase() && progShort(sr.program) !== progShort(e.program)) return;
-    var applies = e.date ? (e.date === sr.date) : (dWeekday(sr.date) === e.day);
-    if(!applies) return;
-    if(isCancel) nd.cancellations.push({ id: "dc" + n + "_" + e.id, entryId: e.id, date: sr.date, by: "Google Sheet", reason: sr.reason || "", at: new Date().toISOString() });
-    else nd.confirmations.push({ id: "dk" + n + "_" + e.id, key: e.id + ":" + sr.date, entryId: e.id, date: sr.date, day: e.day, subject: e.subject, classTime: e.start, room: e.room, teacherName: e.teacher || "", teacherId: "", status: "confirmed", decidedBy: "Google Sheet", at: new Date().toISOString() });
-  });
-}
-async function loadSheetData(){
-  var res = await Promise.all([dGviz("Timetable"), dGviz("Status")]);
-  var rows = dParse(res[0]).map(dEntry).filter(function(e){ return e.program && e.day && e.start && e.subject; });
-  if(!rows.length) return false;
-  var nd = seedDb();
-  nd.entries = rows;
-  nd.teachers = []; nd.rooms = [];
-  rows.forEach(function(e){ if(e.teacher && nd.teachers.indexOf(e.teacher) < 0) nd.teachers.push(e.teacher); if(e.room && nd.rooms.indexOf(e.room) < 0) nd.rooms.push(e.room); });
-  nd.cancellations = []; nd.confirmations = [];
-  dParse(res[1]).map(dStatus).forEach(function(sr, i){ dApplyStatus(nd, sr, i); });
-  db = nd;
-  return true;
-}
-/* SHEET-DATA-END */
-
 async function init(){
-  var sheetOk = false;
-  try{ sheetOk = await loadSheetData(); }catch(e){ sheetOk = false; }
-  if(!sheetOk){ loadLocal(); }
+  try{
+    var data = await api("/api/timetable");
+    if(data && data.programs){ db = data; serverMode = true; }
+    else loadLocal();
+  }catch(e){ loadLocal(); }
   if(!db.sheets) db.sheets = [];
   if(!("fileMeta" in db)) db.fileMeta = null;
   catalogFromEntries();
@@ -1081,8 +990,6 @@ $("loginBackBtn").addEventListener("click", showStudent);
 
 $("loginForm").addEventListener("submit", async function(ev){
   ev.preventDefault();
-  $("loginMsg").innerHTML = '<div class="msg err">This website is managed through its Google Sheet — there is no separate admin panel. <a href="https://docs.google.com/spreadsheets/d/1E2D4gN-zUIBgpEwtoXcXnxufgOtO-raHFUgE01pS5wY/edit" target="_blank" rel="noopener">Open the Timetable Sheet</a> to add or change classes.</div>';
-  return;
   var pw = $("adminPassword").value;
   $("loginMsg").innerHTML = "";
   if(serverMode){
