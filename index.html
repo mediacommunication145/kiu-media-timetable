@@ -220,7 +220,10 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
     <div class="card hidden" id="portalCard">
       <h2 id="portalTitle">Check Students Timetable</h2>
       <p class="sub">This timetable is <strong>only for the Department of Media and Communication</strong>, Karakoram International University (KIU) — for its two programs: <strong>BS Media and Communication Studies (MC)</strong> and <strong>BS Digital Media and Marketing (DM)</strong>. If you are from another department, this timetable is not for you. Select your degree program, semester, section and day, then press <strong>Show Classes</strong>.</p>
-      <div class="actions" style="margin:0 0 16px">
+      <div class="actions no-print" style="margin:0 0 16px">
+        <button class="btn light small" type="button" id="portalBack">&larr; Change &mdash; Students / Teachers</button>
+      </div>
+      <div class="hidden" id="portalTabs">
         <button class="btn" type="button" id="tabStudent">For Students</button>
         <button class="btn light" type="button" id="tabTeacher">For Teachers</button>
       </div>
@@ -1499,6 +1502,7 @@ function choosePortal(side){
 $("chooseStudent").addEventListener("click", function(){ choosePortal("student"); });
 $("chooseTeacher").addEventListener("click", function(){ choosePortal("teacher"); });
 $("chooseAdmin").addEventListener("click", function(){ $("adminToggleBtn").click(); });
+$("portalBack").addEventListener("click", function(){ portalChosen = null; applyPortalState(); window.scrollTo({ top: 0, behavior: "smooth" }); });
 $("tabStudent").addEventListener("click", function(){
   currentView = "student";
   $("portalTitle").textContent = "Check Students Timetable";
