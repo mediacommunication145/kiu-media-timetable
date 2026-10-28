@@ -207,7 +207,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
       <p class="hint">Android phones only. After downloading, open the file and tap <strong>Install</strong> — if your phone asks, allow installs from your browser once. iPhone users: this website works the same way in your browser.</p>
     </div>
     <div class="card hidden" id="portalCard">
-      <h2>Check Students Timetable</h2>
+      <h2 id="portalTitle">Check Students Timetable</h2>
       <p class="sub">This timetable is <strong>only for the Department of Media and Communication</strong>, Karakoram International University (KIU) — for its two programs: <strong>BS Media and Communication Studies (MC)</strong> and <strong>BS Digital Media and Marketing (DM)</strong>. If you are from another department, this timetable is not for you. Select your degree program, semester, section and day, then press <strong>Show Classes</strong>.</p>
       <div class="actions" style="margin:0 0 16px">
         <button class="btn" type="button" id="tabStudent">For Students</button>
@@ -1489,12 +1489,14 @@ $("chooseStudent").addEventListener("click", function(){ choosePortal("student")
 $("chooseTeacher").addEventListener("click", function(){ choosePortal("teacher"); });
 $("tabStudent").addEventListener("click", function(){
   currentView = "student";
+  $("portalTitle").textContent = "Check Students Timetable";
   $("filterForm").classList.remove("hidden"); $("teacherForm").classList.add("hidden");
   $("tabStudent").className = "btn"; $("tabTeacher").className = "btn light";
   showPromptState();
 });
 $("tabTeacher").addEventListener("click", function(){
   currentView = "teacher";
+  $("portalTitle").textContent = "Check Teachers Timetable";
   $("teacherForm").classList.remove("hidden"); $("filterForm").classList.add("hidden");
   $("tabTeacher").className = "btn"; $("tabStudent").className = "btn light";
   if(!(db.teachers || []).length){
