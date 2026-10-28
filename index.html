@@ -596,17 +596,26 @@ async function api(path, method, body){
 }
 
 async function init(){
-  try{
-    var data = await api("/api/timetable");
-    if(data && data.programs){ db = data; serverMode = true; }
-    else loadLocal();
-  }catch(e){ loadLocal(); }
+  var data = null;
+  try{ data = await api("/api/timetable"); }catch(e){}
+  if(!(data && data.programs)){
+    await new Promise(function(r){ setTimeout(r, 2500); });
+    try{ data = await api("/api/timetable"); }catch(e){}
+  }
+  if(data && data.programs){ db = data; serverMode = true; }
+  else loadLocal();
   if(!db.sheets) db.sheets = [];
   if(!("fileMeta" in db)) db.fileMeta = null;
   catalogFromEntries();
   fillProgramSelects(); fillSectionFilter(); fillDatalists(); renderPrograms();
   buildDayChips(); buildTDayChips(); fillTeacherSelect(); renderFileCard(); renderFileAdmin();
   showStudent(); showPromptState(); restoreFilters();
+  if(!serverMode && (location.protocol === "http:" || location.protocol === "https:")){
+    var note = document.createElement("div");
+    note.className = "msg err";
+    note.textContent = "Could not load the latest timetable from the server — showing saved data instead. Please check your connection and refresh the page.";
+    $("results").prepend(note);
+  }
   try{ var me = await api("/api/admin/me"); if(me.admin){ /* session exists; admin still opens via button */ } }catch(e){}
 }
 
@@ -1330,7 +1339,7 @@ function renderTeachers(){
   (db.entries || []).forEach(function(e){ if(e.teacher && !recNames[String(e.teacher).toLowerCase()] && extra.indexOf(e.teacher) < 0) extra.push(e.teacher); });
   extra.sort(function(a,b){ return String(a).localeCompare(String(b)); });
   teacherListCache = recs.map(function(r){ return { rec: r }; }).concat(extra.map(function(n){ return { nameOnly: n }; }));
-  $("teacherCount").textContent = recs.length ? (recs.length + " teacher" + (recs.length===1?"":"s") + " with details saved.") : "No teachers yet — add the first teacher above.";
+  $("teacherCount").textContent = recs.length ? (recs.length + " teacher" + (recs.length===1?"":"s") + " with details saved.") : "No teacher records yet — add one above (name, designation, email).";
   $("adminTeachers").innerHTML = teacherListCache.map(function(it, i){
     var name = it.rec ? it.rec.name : it.nameOnly;
     var n = (db.entries || []).filter(function(e){ return e.teacher === name; }).length;
