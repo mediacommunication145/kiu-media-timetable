@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kiu-media-timetable.vercel.app/sitemap.xml
