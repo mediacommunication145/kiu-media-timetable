@@ -7,17 +7,17 @@
  * The Sheet is edited ONLY through this API (the panel) — it is the data
  * store, never the editing interface.
  *
- * Data lives in the Google Sheet; a small Apps Script inside the Sheet
- * (bound script, deployed as a web app) performs the reads/writes — the
- * panel never touches the Sheet directly.
- * Env: SCRIPT_URL, SCRIPT_TOKEN (shared secret with the Apps Script),
+ * Data lives in the project's own free Upstash Redis database (connected
+ * through Vercel, which injects KV_REST_API_URL / KV_REST_API_TOKEN).
+ * The admin panel is the only editing interface.
+ * Env: KV_REST_API_URL, KV_REST_API_TOKEN (auto-added by Vercel),
  *      SESSION_SECRET, ADMIN_PASSWORD (initial only),
  *      ADMIN_RECOVERY_KEY (initial only).
  */
 const crypto = require('crypto');
 
-const SCRIPT_URL = process.env.SCRIPT_URL || '';
-const SCRIPT_TOKEN = process.env.SCRIPT_TOKEN || '';
+const KV_URL = process.env.KV_REST_API_URL || '';
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || '';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'kiu-session-secret';
 const DEFAULT_PW = process.env.ADMIN_PASSWORD || 'kiu-admin-2025';
 const DEFAULT_REC = process.env.ADMIN_RECOVERY_KEY || 'kiu-recovery-2025';
@@ -69,72 +69,49 @@ function pktNow() {
   return { day: parts.weekday, date: parts.year + '-' + parts.month + '-' + parts.day };
 }
 
-/* ---------------- data service (Apps Script inside the Sheet) ---------------- */
-async function scriptOp(op, extra) {
-  const r = await fetch(SCRIPT_URL, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(Object.assign({ token: SCRIPT_TOKEN, op }, extra || {}))
+/* ---------------- data store (Upstash Redis, REST) ---------------- */
+async function kvPipeline(cmds) {
+  const r = await fetch(KV_URL + '/pipeline', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + KV_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify(cmds)
   });
   const text = await r.text();
   let j;
-  try { j = JSON.parse(text); } catch (e) { throw new Error('Data service returned an unreadable reply.'); }
-  if (j && j.error) throw new Error('Data service: ' + j.error);
-  return j;
+  try { j = JSON.parse(text); } catch (e) { throw new Error('Data store returned an unreadable reply.'); }
+  if (!Array.isArray(j)) throw new Error('Data store error.');
+  for (const item of j) if (item && item.error) throw new Error('Data store: ' + item.error);
+  return j.map(x => (x ? x.result : null));
 }
-let tabsReady = false;
-async function ensureTabs() {
-  if (tabsReady) return;
-  const meta = await scriptOp('sheets.list');
-  const titles = (meta.sheets || []).map(s => s.properties.title);
-  const want = [['Timetable', TT_HEADER], ['Status', ST_HEADER], ['Teachers', TEACH_HEADER], ['Meta', META_HEADER]];
-  for (const w of want) {
-    if (!titles.includes(w[0])) {
-      await scriptOp('sheets.add', { title: w[0] });
-      await writeRange(w[0] + '!A1', [w[1]]);
-    }
-  }
-  tabsReady = true;
+async function kvSet(key, value) { await kvPipeline([['SET', key, value]]); }
+function parseJsonSafe(s, fallback) {
+  if (s == null) return fallback;
+  try { const v = JSON.parse(s); return v == null ? fallback : v; } catch (e) { return fallback; }
 }
-async function readValues(tab) {
-  const j = await scriptOp('values.getAll', { tab });
-  return j.values || [];
-}
-async function writeRange(range, values) {
-  await scriptOp('values.set', { range, values });
-}
-async function clearTail(tab, lastCol) {
-  await scriptOp('values.clear', { range: tab + '!A2:' + lastCol + '1000' });
-}
+function stripId(o) { const c = Object.assign({}, o); delete c.id; return c; }
 
 /* ---------------- state: Sheet tabs <-> the db the page uses ---------------- */
 async function loadState() {
-  await ensureTabs();
-  const all = await scriptOp('values.getMany', { tabs: ['Timetable', 'Status', 'Teachers', 'Meta'] });
-  const byTab = all.valuesByTab || {};
-  const tt = byTab['Timetable'] || [], st = byTab['Status'] || [], te = byTab['Teachers'] || [], me = byTab['Meta'] || [];
-  const entries = [];
-  for (let i = 1; i < tt.length; i++) {
-    const r = tt[i]; if (!r || !r.some(c => String(c || '').trim())) continue;
-    const e = {
-      id: 'r' + (i + 1), program: String(r[0] || '').trim(), semester: String(r[1] || '').replace(/[^0-9]/g, ''),
-      section: String(r[2] || '').trim(), day: capDay(r[3]), start: normTime(r[4]), end: normTime(r[5]),
-      subject: String(r[6] || '').trim(), teacher: String(r[7] || '').trim(), room: String(r[8] || '').trim()
+  const [eS, sS, tS, mS] = await kvPipeline([
+    ['GET', 'kiu:entries'], ['GET', 'kiu:status'], ['GET', 'kiu:teachers'], ['GET', 'kiu:meta']
+  ]);
+  const entries = parseJsonSafe(eS, []).map((e, i) => {
+    const x = {
+      id: 'r' + (i + 2), program: String(e.program || '').trim(), semester: String(e.semester || '').replace(/[^0-9]/g, ''),
+      section: String(e.section || '').trim(), day: capDay(e.day), start: normTime(e.start), end: normTime(e.end),
+      subject: String(e.subject || '').trim(), teacher: String(e.teacher || '').trim(), room: String(e.room || '').trim()
     };
-    const d = normDate(r[9]); if (d) e.date = d;
-    entries.push(e);
-  }
-  const statusRows = [];
-  for (let i = 1; i < st.length; i++) {
-    const r = st[i]; if (!r || !r.some(c => String(c || '').trim())) continue;
-    statusRows.push({ date: normDate(r[0]), subject: String(r[1] || '').trim(), program: String(r[2] || '').trim(), status: String(r[3] || '').trim(), reason: String(r[4] || '').trim() });
-  }
-  const teacherRecords = [];
-  for (let i = 1; i < te.length; i++) {
-    const r = te[i]; if (!r || !String(r[0] || '').trim()) continue;
-    teacherRecords.push({ id: 't' + (i + 1), name: String(r[0] || '').trim(), designation: String(r[1] || '').trim(), email: String(r[2] || '').trim() });
-  }
-  const metaMap = {};
-  for (let i = 1; i < me.length; i++) { const r = me[i]; if (r && r[0]) metaMap[String(r[0]).trim()] = r[1] || ''; }
+    const d = normDate(e.date); if (d) x.date = d;
+    return x;
+  });
+  const statusRows = parseJsonSafe(sS, []).map(s => ({
+    date: normDate(s.date), subject: String(s.subject || '').trim(), program: String(s.program || '').trim(),
+    status: String(s.status || '').trim(), reason: String(s.reason || '').trim()
+  })).filter(s => s.date && s.subject);
+  const teacherRecords = parseJsonSafe(tS, []).map((r, i) => ({
+    id: 't' + (i + 2), name: String(r.name || '').trim(), designation: String(r.designation || '').trim(), email: String(r.email || '').trim()
+  })).filter(r => r.name);
+  const metaMap = parseJsonSafe(mS, {});
   return { entries, statusRows, teacherRecords, metaMap };
 }
 function parsePrograms(metaMap) {
@@ -179,25 +156,17 @@ function buildDb(state) {
   };
 }
 async function saveTimetable(entries) {
-  const rows = [TT_HEADER].concat(entries.map(e => [e.program, e.semester, e.section || '', e.day, e.start, e.end || '', e.subject, e.teacher || '', e.room || '', e.date || '']));
-  await clearTail('Timetable', 'J');
-  await writeRange('Timetable!A1', rows);
+  await kvSet('kiu:entries', JSON.stringify(entries.map(stripId)));
 }
 async function saveStatus(statusRows) {
-  const rows = [ST_HEADER].concat(statusRows.map(s => [s.date, s.subject, s.program || '', s.status, s.reason || '']));
-  await clearTail('Status', 'E');
-  await writeRange('Status!A1', rows);
+  await kvSet('kiu:status', JSON.stringify(statusRows));
 }
 async function saveTeachers(records) {
-  const rows = [TEACH_HEADER].concat(records.map(t => [t.name, t.designation || '', t.email || '']));
-  await clearTail('Teachers', 'C');
-  await writeRange('Teachers!A1', rows);
+  await kvSet('kiu:teachers', JSON.stringify(records.map(stripId)));
 }
 async function saveMeta(state, key, value) {
   state.metaMap[key] = value;
-  const rows = [META_HEADER].concat(Object.keys(state.metaMap).map(k => [k, state.metaMap[k]]));
-  await clearTail('Meta', 'B');
-  await writeRange('Meta!A1', rows);
+  await kvSet('kiu:meta', JSON.stringify(state.metaMap));
 }
 
 /* ---------------- password / session (same rules as the original server) ---------------- */
