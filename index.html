@@ -889,7 +889,7 @@ function renderSheetGrid(list, title){
   }
   var slots = slotList(currentResults);
   var now = pktParts();
-  var days = DAYS.filter(function(d){ return currentResults.some(function(e){ return e.day === d; }); });
+  var days = DAYS.filter(function(d){ return d === "Saturday" || currentResults.some(function(e){ return e.day === d; }); });
   var html = DEPT_HTML + '<div class="result-meta"><strong>' + esc(title) + '</strong><span class="chip">' + currentResults.length + ' classes</span></div>';
   html += '<p class="sub" style="margin:2px 0 8px"><span class="badge ok">GREEN</span> class will be held &nbsp;<span class="badge bad">RED</span> class is cancelled &nbsp;·&nbsp; scroll the sheet sideways on a phone</p>';
   html += '<div class="grid-wrap"><table class="sheet"><thead><tr><th class="day-col">Day</th>';
@@ -1124,7 +1124,7 @@ function renderAdminGrid(){
   var entries = db.entries || [];
   var slots = slotList(entries);
   var now = pktParts();
-  var days = DAYS.filter(function(d){ return d !== "Saturday" || entries.some(function(e){ return e.day === d; }); });
+  var days = DAYS.slice();
   if(!slots.length){ box.innerHTML = '<div class="empty"><strong>No classes yet</strong>Add the first class with the form above — it will appear here in the sheet.</div>'; return; }
   var html = '<div class="grid-wrap"><table class="sheet"><thead><tr><th class="day-col">Day</th>';
   slots.forEach(function(s){ html += '<th>' + esc(fmtTime(s.start)) + (s.end ? ' – ' + esc(fmtTime(s.end)) : '') + '</th>'; });
