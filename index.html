@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Timetable — Department of Media and Communication | KIU</title>
+<meta name="description" content="Check class timetables for BS Media and Communication Studies and BS Digital Media and Marketing at Karakoram International University (KIU), Department of Media and Communication.">
+<style>
+:root{
+  --navy:#0d3b5e; --navy2:#0a2f4b; --gold:#c9a227; --gold-soft:#f5ecd2;
+  --ink:#1c2733; --muted:#5b6b7b; --line:#dbe3ea; --bg:#f4f7fa; --card:#ffffff;
+  --green:#17734a; --red:#b3261e; --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden}
+body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45}
+a{color:var(--navy)}
+/* Header */
+.topbar{background:var(--navy2);color:#fff;font-size:.82rem}
+.topbar .wrap{display:flex;justify-content:space-between;gap:10px;padding:6px 16px;max-width:1080px;margin:0 auto}
+.topbar a{color:#dbe9f5;text-decoration:none}
+header.site{background:#fff;border-bottom:3px solid var(--gold)}
+header.site .wrap{max-width:1080px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;gap:14px}
+header.site img{width:64px;height:64px;object-fit:contain}
+header.site h1{font-size:1.28rem;margin:0;color:var(--navy);line-height:1.25}
+header.site p{margin:2px 0 0;color:var(--muted);font-size:.92rem}
+header.site .admin-link{margin-left:auto;white-space:nowrap}
+.btn{display:inline-block;border:1px solid var(--navy);background:var(--navy);color:#fff;padding:10px 18px;border-radius:9px;font-size:.95rem;cursor:pointer;text-decoration:none;font-weight:600}
+.btn:hover{background:var(--navy2)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#231d05}
+.btn.gold:hover{background:#b28f1f}
+.btn.light{background:#fff;color:var(--navy)}
+.btn.light:hover{background:#eef4f9}
+.btn.small{padding:7px 12px;font-size:.86rem}
+.btn.danger{background:#fff;color:var(--red);border-color:var(--red)}
+.btn.danger:hover{background:#fdeceb}
+main{max-width:1080px;margin:0 auto;padding:20px 16px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px;box-shadow:0 1px 4px rgba(13,59,94,.06)}
+.card h2{margin:0 0 4px;font-size:1.15rem;color:var(--navy)}
+.card .sub{color:var(--muted);font-size:.9rem;margin:0 0 16px}
+/* Filters */
+.filters{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.day-chips{display:flex;flex-wrap:wrap;gap:8px}
+.day-chip{border:1.5px solid var(--line);background:#fff;color:var(--navy);border-radius:999px;padding:10px 16px;font-weight:600;cursor:pointer;font-size:.95rem;min-height:44px}
+.day-chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.field label{display:block;font-weight:600;font-size:.88rem;margin-bottom:6px;color:var(--navy)}
+.field select,.field input{width:100%;padding:12px 10px;border:1px solid var(--line);border-radius:9px;font-size:1rem;background:#fff;color:var(--ink);min-height:48px}
+.field select:focus,.field input:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.actions .spacer{flex:1}
+.hint{font-size:.85rem;color:var(--muted);margin-top:10px}
+/* Table */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:640px;background:#fff}
+th{background:var(--navy);color:#fff;text-align:left;padding:11px 12px;font-size:.88rem;letter-spacing:.02em}
+td{padding:10px 12px;border-top:1px solid var(--line);font-size:.95rem;vertical-align:top}
+tr:nth-child(even) td{background:#f7fafc}
+.day-head td{background:var(--gold-soft)!important;font-weight:700;color:var(--navy);font-size:.95rem}
+.empty{border:1.5px dashed var(--line);border-radius:10px;padding:28px 18px;text-align:center;color:var(--muted);background:#fbfcfe}
+.empty strong{color:var(--navy);display:block;font-size:1.02rem;margin-bottom:4px}
+.result-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.chip{background:#eef4f9;color:var(--navy);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.83rem;font-weight:600}
+/* Admin */
+.hidden{display:none!important}
+.admin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.admin-grid .full{grid-column:1/-1}
+.admin-grid .half{grid-column:span 1}
+.msg{padding:10px 14px;border-radius:9px;font-size:.9rem;margin:12px 0}
+.msg.ok{background:#e7f6ee;color:var(--green);border:1px solid #bfe6d2}
+.rtable tr.row-on td{background:#f2fbf5}
+.rtable tr.row-on td:first-child{box-shadow:inset 4px 0 0 #22a559}
+.rtable tr.row-cancelled td{background:#fdf1f1}
+.rtable tr.row-cancelled td:first-child{box-shadow:inset 4px 0 0 #d43a3a}
+.badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:700;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.badge.ok{background:#dff5e5;color:#157347}
+.badge.bad{background:#fbe0e0;color:#b02a2a}
+.badge.wait{background:#fdf3d7;color:#8a6d1a}
+.msg.err{background:#fdeceb;color:var(--red);border:1px solid #f3c1bd}
+.admin-list{max-height:340px;overflow:auto}
+footer.site{border-top:1px solid var(--line);background:#fff;color:var(--muted);font-size:.86rem}
+footer.site .wrap{max-width:1080px;margin:0 auto;padding:18px 16px}
+@media (max-width:760px){
+  .filters{grid-template-columns:1fr 1fr}
+  .admin-grid{grid-template-columns:1fr 1fr}
+  header.site h1{font-size:1.08rem}
+  header.site img{width:52px;height:52px}
+  .actions .btn{flex:1;text-align:center}
+}
+@media (max-width:430px){ .filters{grid-template-columns:1fr} .admin-grid{grid-template-columns:1fr} }
+/* Mobile: results become easy-to-read cards (most students are on phones) */
+@media (max-width:640px){
+  main{padding:14px 10px 32px}
+  .card{padding:16px 14px}
+  .topbar .wrap{flex-direction:column;gap:2px;text-align:center;font-size:.78rem}
+  .actions .btn{padding:13px 10px}
+  #results .table-wrap{border:none;overflow:visible}
+  table.rtable{min-width:0;width:100%;table-layout:fixed}
+  table.rtable td{flex-wrap:wrap}
+  table.rtable td>*{min-width:0}
+  table.rtable thead{display:none}
+  table.rtable tr{display:block;background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;padding:4px 0}
+  table.rtable tr.day-head{background:var(--gold-soft);border-color:var(--gold-soft);padding:0;margin-top:14px}
+  table.rtable td{display:flex;justify-content:space-between;align-items:baseline;gap:14px;border-top:none;padding:7px 12px;text-align:right}
+  table.rtable td::before{content:attr(data-label);font-weight:700;color:var(--navy);text-align:left;flex:0 0 84px}
+  table.rtable tr.day-head td{display:block;text-align:left;font-size:1rem}
+  table.rtable tr.day-head td::before{content:""}
+  table.rtable td.subj{font-weight:700}
+}
+
+/* Sheet-style weekly grid (student view + admin editor) */
+.grid-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table.sheet{min-width:780px;border-collapse:collapse;width:100%;background:#fff}
+table.sheet th,table.sheet td{border:1px solid var(--line);padding:8px;vertical-align:top;font-size:.88rem;min-width:120px}
+table.sheet thead th{background:var(--navy);color:#fff;text-align:center}
+table.sheet th.day-col{background:var(--gold-soft);color:var(--navy);text-align:left;white-space:nowrap;min-width:86px}
+table.sheet tr.today-row th.day-col{background:var(--gold);color:#231d05}
+table.sheet tr.today-row td{background:#fffdf2}
+.cell-class{margin-bottom:6px;border-radius:6px;padding:4px 5px}
+.cell-class strong{display:block;font-size:.9rem}
+.cell-meta{display:block;color:var(--muted);font-size:.79rem;font-weight:700}
+.cell-teacher{display:block;font-style:italic;color:var(--navy);font-size:.82rem}
+.cell-class.cancelled{background:#fdf1f1}
+.cell-class.confirmed{background:#eefaf1}
+.blk{display:block;text-align:left;width:100%;background:#eef4f9;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:6px;cursor:pointer;font:inherit}
+.blk:hover{border-color:var(--navy)}
+.blk.cancelled{background:#fdf1f1}
+.blk.confirmed{background:#e9f9ee}
+.blk.past{opacity:.55}
+.cell-add{width:100%;min-height:46px;border:1.5px dashed var(--line);background:#fbfcfe;border-radius:8px;color:var(--muted);font-size:1.15rem;cursor:pointer}
+.cell-add:hover{border-color:var(--navy);color:var(--navy)}
+.tickrow{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px}
+.tickrow label{display:flex;gap:8px;align-items:center;font-weight:600;cursor:pointer}
+.tickrow input{width:20px;height:20px;flex:0 0 auto}
+/* Mobile safety: nothing may escape the screen width */
+img,video,canvas,svg{max-width:100%}
+input[type="file"]{max-width:100%}
+td,th,.hint,.sub,.msg{overflow-wrap:break-word}
+#confirmNote{overflow-wrap:anywhere}
+@media (max-width:640px){
+  header.site .wrap{flex-wrap:wrap}
+  header.site .admin-link{margin-left:0}
+  .btn{max-width:100%}
+}
+@media print{
+  .topbar,header.site .admin-link,.no-print,footer.site{display:none!important}
+  body{background:#fff}
+  main{padding:0}
+  .card{border:none;box-shadow:none;padding:0}
+  table{min-width:0}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar no-print">
+  <div class="wrap">
+    <span>Karakoram International University — Gilgit-Baltistan</span>
+    <span><a href="https://www.kiu.edu.pk/departments/department-of-media-and-communication" target="_blank" rel="noopener">Official Department Page</a></span>
+  </div>
+</div>
+
+<header class="site">
+  <div class="wrap">
+    <img src="kiu-logo.png" alt="KIU Logo" onerror="this.style.display='none'">
+    <div>
+      <h1>Department of Media and Communication</h1>
+      <p>Student Timetable — Karakoram International University</p>
+    </div>
+    <div class="admin-link no-print">
+      <button class="btn light small" id="adminToggleBtn" type="button">Admin Login</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ============ STUDENT VIEW ============ -->
+  <section id="studentView">
+    <div class="card">
+      <h2>Check Students Timetable</h2>
+      <p class="sub">This timetable is <strong>only for the Department of Media and Communication</strong>, Karakoram International University (KIU) — for its two programs: <strong>BS Media and Communication Studies (MC)</strong> and <strong>BS Digital Media and Marketing (DM)</strong>. If you are from another department, this timetable is not for you. Select your degree program, semester, section and day, then press <strong>Show Classes</strong>.</p>
+      <div class="actions" style="margin:0 0 16px">
+        <button class="btn" type="button" id="tabStudent">For Students</button>
+        <button class="btn light" type="button" id="tabTeacher">For Teachers</button>
+      </div>
+      <form id="filterForm">
+        <div class="filters">
+          <div class="field">
+            <label for="fProgram">Degree Program</label>
+            <select id="fProgram" required>
+              <option value="">— Select Program —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fSemester">Semester</label>
+            <select id="fSemester">
+              <option value="">All Semesters</option>
+              <option>1</option><option>2</option><option>3</option><option>4</option>
+              <option>5</option><option>6</option><option>7</option><option>8</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fSection">Section</label>
+            <select id="fSection">
+              <option value="">All Sections</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label>Days — tap the days you want to add, then press Show Classes</label>
+          <div class="day-chips" id="dayChips"></div>
+          <p class="hint" style="margin-top:8px">Pick Monday, Tuesday, Wednesday... one by one to check several days together — or tap <strong>All Week</strong> for the full week. No day selected = whole week.</p>
+        </div>
+        <div class="actions no-print">
+          <button class="btn" type="submit">Show Classes</button>
+          <button class="btn light" type="button" id="fullBtn">View Full Timetable</button>
+          <button class="btn light" type="button" id="sheetBtn">Sheet View (Weekly Grid)</button>
+          <button class="btn light" type="button" id="clearBtn">Clear Filters</button>
+          <span class="spacer"></span>
+          <button class="btn light" type="button" id="printBtn">Print Timetable</button>
+          <button class="btn light" type="button" id="pdfBtn">Download PDF</button>
+        </div>
+      </form>
+
+      <form id="teacherForm" class="hidden">
+        <div class="filters" style="grid-template-columns:1fr">
+          <div class="field">
+            <label for="tTeacher">Teacher</label>
+            <select id="tTeacher" required>
+              <option value="">— Select Teacher —</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label>Days — tap the days you want to add</label>
+          <div class="day-chips" id="tDayChips"></div>
+          <p class="hint" style="margin-top:8px">No day selected = the whole week.</p>
+        </div>
+        <div class="actions no-print">
+          <button class="btn" type="submit">Show My Classes</button>
+          <button class="btn light" type="button" id="tFullBtn">View Full Week</button>
+          <button class="btn light" type="button" id="tClearBtn">Clear</button>
+          <span class="spacer"></span>
+          <button class="btn light" type="button" id="tPrintBtn">Print Timetable</button>
+          <button class="btn light" type="button" id="tPdfBtn">Download PDF</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" id="resultsCard">
+      <div id="results"></div>
+    </div>
+
+    <div class="card hidden" id="fileCard">
+      <h2>Official Timetable File</h2>
+      <p class="sub" id="fileInfo"></p>
+      <div class="actions no-print">
+        <button class="btn" type="button" id="fileViewBtn">View Timetable File</button>
+        <button class="btn light" type="button" id="fileDownloadBtn">Download</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN LOGIN ============ -->
+  <section id="loginView" class="hidden">
+    <div class="card" style="max-width:440px;margin:0 auto">
+      <h2>Admin Login</h2>
+      <p class="sub">Only the department administrator can add or change timetable entries. Students do not need to log in.</p>
+      <form id="loginForm">
+        <div class="field">
+          <label for="adminPassword">Password</label>
+          <input type="password" id="adminPassword" autocomplete="current-password" required>
+        </div>
+        <div id="loginMsg"></div>
+        <div class="actions">
+          <button class="btn" type="submit">Login</button>
+          <button class="btn light" type="button" id="loginBackBtn">Back to Timetable</button>
+        </div>
+      </form>
+      <p style="margin-top:14px"><button class="btn light small" type="button" id="forgotToggle">Forgot password?</button></p>
+      <div id="forgotBox" class="hidden">
+        <div id="recBox">
+          <form id="forgotForm">
+            <div class="field">
+              <label for="recKey">Recovery Key</label>
+              <input type="password" id="recKey" autocomplete="off" required>
+            </div>
+            <div class="field" style="margin-top:10px">
+              <label for="newPwForgot">New Password (min 6 characters)</label>
+              <input type="password" id="newPwForgot" autocomplete="new-password" required minlength="6">
+            </div>
+            <div id="forgotMsg"></div>
+            <div class="actions">
+              <button class="btn gold" type="submit">Reset Password</button>
+            </div>
+            <p class="hint">Enter the recovery key the administrator set (default: kiu-recovery-2025 — the administrator should change it in the admin panel after the first login).</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN PANEL ============ -->
+  <section id="adminView" class="hidden">
+    <div class="card">
+      <h2>Admin — Timetable Management</h2>
+      <p class="sub">Add, edit or delete class entries. Changes are saved permanently and students see them right away.</p>
+      <div id="adminMsg"></div>
+      <form id="entryForm">
+        <input type="hidden" id="eId">
+        <div class="admin-grid">
+          <div class="field">
+            <label for="eFor">Class For * (kis ke liye class hai)</label>
+            <select id="eFor" required><option value="MC">Only MC — Media &amp; Communication Studies</option><option value="DM">Only DM — Digital Media &amp; Marketing</option><option value="BOTH" selected>Combined — MC + DM (both together)</option></select>
+          </div>
+          <div class="field">
+            <label for="eSemester">Semester *</label>
+            <select id="eSemester" required>
+              <option value="">— Select —</option>
+              <option>1</option><option>2</option><option>3</option><option>4</option>
+              <option>5</option><option>6</option><option>7</option><option>8</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="eSection">Section</label>
+            <input id="eSection" list="dlSections" placeholder="e.g. A">
+            <datalist id="dlSections"></datalist>
+          </div>
+          <div class="field">
+            <label for="eDay">Day *</label>
+            <select id="eDay" required>
+              <option value="">— Select —</option>
+              <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+              <option>Thursday</option><option>Friday</option><option>Saturday</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="eDate">Extra Class — one-time date</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="checkbox" id="eExtra" style="width:20px;height:20px;flex:0 0 auto">
+              <input id="eDate" type="date" style="flex:1">
+            </div>
+          </div>
+          <div class="field">
+            <label for="eStart">Start Time *</label>
+            <input id="eStart" type="time" required>
+          </div>
+          <div class="field">
+            <label for="eEnd">End Time</label>
+            <input id="eEnd" type="time">
+          </div>
+          <div class="field">
+            <label for="eSubject">Subject *</label>
+            <input id="eSubject" list="dlSubjects" placeholder="Subject name" required>
+            <datalist id="dlSubjects"></datalist>
+          </div>
+          <div class="field">
+            <label for="eTeacher">Teacher</label>
+            <input id="eTeacher" list="dlTeachers" placeholder="Teacher name">
+            <datalist id="dlTeachers"></datalist>
+          </div>
+          <div class="field">
+            <label for="eRoom">Classroom</label>
+            <input id="eRoom" list="dlRooms" placeholder="e.g. Room 101">
+            <datalist id="dlRooms"></datalist>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn gold" type="submit" id="saveEntryBtn">Add Class</button>
+          <button class="btn light" type="button" id="cancelEditBtn">Cancel Edit</button>
+          <span class="spacer"></span>
+          <button class="btn danger" type="button" id="logoutBtn">Logout</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Import from Excel / CSV</h2>
+      <p class="sub">Upload your Excel sheet (.xlsx) directly, or a CSV. Columns: <strong>Program, Semester, Section, Day, Start, End, Subject, Teacher, Classroom</strong> (Start/End like 09:00 and 10:30, or a single Time column like 09:00-10:30).</p>
+      <div class="actions no-print">
+        <input type="file" id="csvFile" accept=".csv,.xlsx,.xls,text/csv">
+        <button class="btn" type="button" id="importBtn">Import File</button>
+        <button class="btn light" type="button" id="templateBtn">Download CSV Template</button>
+      </div>
+      <div id="importMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Sheet Upload — Handwritten / Image / PDF / Excel</h2>
+      <p class="sub">Upload a timetable in any shape — an Excel file, a typed PDF, or a photo/scan of a handwritten page. <strong>Excel and typed PDFs</strong> are read right here into the preview box below: check or adjust the rows, then import with one click. A <strong>handwritten or photo sheet</strong> cannot be auto-read by the website alone — it is saved under <strong>Pending Sheets</strong>; send the same sheet to Muse in chat and it will be read, adjusted and returned as a ready-to-import file.</p>
+      <div class="actions no-print">
+        <input type="file" id="sheetFile" accept=".pdf,.xlsx,.xls,.csv,image/*">
+        <button class="btn" type="button" id="readSheetBtn">Read / Upload Sheet</button>
+      </div>
+      <div id="sheetMsg"></div>
+      <div class="field" style="margin-top:12px">
+        <label for="sheetPreview">Sheet Preview — the rows read from your sheet (you can adjust them here)</label>
+        <textarea id="sheetPreview" rows="8" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:.9rem;font-family:monospace" placeholder="Rows read from an Excel / PDF sheet will appear here. Keep the first row as the column headings (Program, Semester, ... or Name, Reg No, Program, ...)"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn gold" type="button" id="sheetImportTimetableBtn">Import Preview as Timetable</button>
+        <button class="btn light" type="button" id="sheetSavePendingBtn">Save Sheet as Pending</button>
+      </div>
+      <p class="sub" style="margin-top:16px">Pending Sheets — handwritten / photo sheets waiting to be read &amp; adjusted</p>
+      <div id="pendingSheets"></div>
+    </div>
+
+    <div class="card">
+      <h2>Timetable PDF / Image</h2>
+      <p class="sub">Upload the department's official timetable as a PDF or an image (photo / scan). Students will get a View / Download button for this file on the student page. For automatic, searchable class entries, use the CSV import above.</p>
+      <div id="fileAdminInfo" style="margin-bottom:10px"></div>
+      <div class="actions no-print">
+        <input type="file" id="ttFile" accept=".pdf,image/*">
+        <button class="btn" type="button" id="uploadFileBtn">Upload File</button>
+        <button class="btn danger" type="button" id="removeFileBtn">Remove File</button>
+      </div>
+      <div id="fileMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Admin Password &amp; Recovery</h2>
+      <p class="sub">Change your admin password here. Also save your own recovery key — if you ever forget the password, you can reset it from the login page with this key.</p>
+      <form id="pwForm">
+        <div class="admin-grid">
+          <div class="field">
+            <label for="curPw">Current Password</label>
+            <input type="password" id="curPw" autocomplete="current-password" required>
+          </div>
+          <div class="field">
+            <label for="newPw">New Password (min 6)</label>
+            <input type="password" id="newPw" autocomplete="new-password" required minlength="6">
+          </div>
+          <div class="field">
+            <label for="recKeySet">Recovery Key (min 6) — keep it private</label>
+            <input type="text" id="recKeySet" autocomplete="off" placeholder="Set or change recovery key">
+          </div>
+        </div>
+        <div id="pwMsg"></div>
+        <div class="actions">
+          <button class="btn" type="submit">Change Password</button>
+          <button class="btn light" type="button" id="setRecBtn">Save Recovery Key</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Data Backup</h2>
+      <p class="sub">Download a full backup of this timetable system — all classes, teachers and the saved password/recovery settings (passwords stay hashed). Keep the file somewhere safe. If the server is ever lost, restore from this file and everything comes back. (Uploaded PDF/sheet files themselves live on the server disk and are not inside this backup.)</p>
+      <div class="actions no-print">
+        <button class="btn" type="button" id="backupBtn">Download Backup</button>
+        <input type="file" id="restoreFile" accept=".json,application/json">
+        <button class="btn danger" type="button" id="restoreBtn">Restore Backup</button>
+      </div>
+      <div id="backupMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Degree Programs</h2>
+      <p class="sub">The two department programs are already added. You can add more programs later if the department starts new ones.</p>
+      <div id="programList"></div>
+      <form id="programForm" class="actions" style="align-items:flex-end">
+        <div class="field" style="flex:1;min-width:220px">
+          <label for="newProgram">New Program Name</label>
+          <input id="newProgram" placeholder="e.g. BS Film and Television">
+        </div>
+        <button class="btn" type="submit">Add Program</button>
+      </form>
+    </div>
+
+        <div class="card">
+      <h2>Teachers</h2>
+      <p class="sub">Add teachers with their details — only the name is required; Designation and Email are optional and can be added later with Edit. An added teacher appears in the "For Teachers" list and in the Teacher field when you add a class — even before they have any class. Changing a teacher's name also updates their existing classes. Teacher details stay private — students never see them.</p>
+      <form id="teacherAdminForm">
+        <input type="hidden" id="tchId">
+        <div class="admin-grid">
+          <div class="field"><label>Teacher Name *</label><input id="tchName" placeholder="e.g. Mr Shams Ur Rehman" required></div>
+          <div class="field"><label>Designation</label><input id="tchDesignation" placeholder="e.g. Lecturer / HoD / Assistant Professor"></div>
+          <div class="field"><label>Email</label><input id="tchEmail" type="email" placeholder="name@kiu.edu.pk"></div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" type="submit" id="saveTeacherBtn">Add Teacher</button>
+          <button class="btn light hidden" type="button" id="cancelTeacherEditBtn">Cancel Edit</button>
+        </div>
+        <p class="msg" id="teacherMsg"></p>
+      </form>
+      <p class="sub" id="teacherCount"></p>
+      <div class="table-wrap"><table class="rtable"><thead><tr><th>Teacher</th><th>Designation</th><th>Email</th><th>Classes</th><th></th></tr></thead><tbody id="adminTeachers"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Timetable Grid — Excel Style Editor</h2>
+      <p class="sub">The whole week in one sheet, like the printed timetable. Tap any class to edit it right here — subject, teacher, time — or tick today's <strong>Confirm</strong> / <strong>Cancel</strong>. Tap an empty box (<strong>+</strong>) to add a class in that slot. For a one-time <strong>Extra Class</strong> (e.g. a makeup class), tick <strong>Extra Class</strong> in the editor and pick its date — students will see it only in that week, with an EXTRA CLASS tag.</p>
+      <div id="gridMsg"></div>
+      <div id="adminGrid"></div>
+      <div id="cellEditor" class="hidden" style="margin-top:16px;border-top:2px solid var(--gold);padding-top:14px">
+        <h3 id="geTitle" style="margin:0 0 10px;color:var(--navy)">Edit Class</h3>
+        <input type="hidden" id="geId">
+        <div class="admin-grid">
+          <div class="field"><label for="geFor">Class For *</label><select id="geFor"><option value="MC">Only MC — Media &amp; Communication Studies</option><option value="DM">Only DM — Digital Media &amp; Marketing</option><option value="BOTH" selected>Combined — MC + DM (both together)</option></select></div>
+          <div class="field"><label for="geSemester">Semester *</label><select id="geSemester"><option value="">— Select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
+          <div class="field"><label for="geSection">Section</label><input id="geSection" list="dlSections" placeholder="Optional"></div>
+          <div class="field"><label for="geDay">Day *</label><select id="geDay"></select></div>
+          <div class="field"><label for="geDate">Extra Class — one-time date</label><div style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="geExtra" style="width:20px;height:20px;flex:0 0 auto"><input id="geDate" type="date" style="flex:1"></div></div>
+          <div class="field"><label for="geStart">Start *</label><input id="geStart" type="time"></div>
+          <div class="field"><label for="geEnd">End</label><input id="geEnd" type="time"></div>
+          <div class="field"><label for="geSubject">Subject *</label><input id="geSubject" list="dlSubjects" placeholder="Subject name"></div>
+          <div class="field"><label for="geTeacher">Teacher</label><input id="geTeacher" list="dlTeachers" placeholder="Teacher name"></div>
+          <div class="field"><label for="geRoom">Classroom</label><input id="geRoom" list="dlRooms" placeholder="e.g. Room 02"></div>
+        </div>
+        <div class="tickrow">
+          <label><input type="checkbox" id="geConfirmToday"> Confirm today's class (green)</label>
+          <label><input type="checkbox" id="geCancelToday"> Cancel today's class (red)</label>
+        </div>
+        <div class="field" style="margin-top:10px"><label for="geReason">Reason for cancelling (optional — students see it on the website)</label><input id="geReason" placeholder="e.g. Teacher not available today"></div>
+        <p class="hint" id="geTickHint"></p>
+        <div id="geMsg"></div>
+        <div class="actions">
+          <button class="btn" type="button" id="geSave">Save</button>
+          <button class="btn danger hidden" type="button" id="geDelete">Delete Class</button>
+          <button class="btn light" type="button" id="geClose">Close</button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    Department of Media and Communication, Karakoram International University, Gilgit-Baltistan.<br>
+    This timetable page is a department helper for students. For official notices and academic policies, please refer to KIU's official channels.<br>
+    <span style="display:inline-block;margin-top:6px">Developed by <strong>Rizwan Nazir</strong></span>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+"use strict";
+var DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+var LS_KEY = "kiu_media_timetable_v1";
+var LOCAL_ADMIN_PASSWORD = "kiu-admin-2025"; // standalone-file demo mode only; server mode checks the real password on the server
+var DEFAULT_RECOVERY = "kiu-recovery-2025";
+var PW_LS_KEY = "kiu_media_pw", REC_LS_KEY = "kiu_media_rec", FILE_LS_KEY = "kiu_media_tt_file_v1";
+var selectedDays = {};
+var tSelectedDays = {};
+var currentView = "student";
+var FILTERS_LS = "kiu_media_filters_v1";
+
+var db = null;
+var serverMode = false;
+var currentResults = [];
+var currentTitle = "";
+
+var SEED_ENTRIES = [{"id": "seed01", "program": "BS Media and Communication Studies", "semester": "6", "section": "", "day": "Monday", "start": "09:30", "end": "11:00", "subject": "Research Methods-I", "teacher": "Dr. Akber Ali", "room": "Room 02"}, {"id": "seed02", "program": "BS Digital Media and Marketing", "semester": "6", "section": "", "day": "Monday", "start": "09:30", "end": "11:00", "subject": "Research Methods-I", "teacher": "Dr. Akber Ali", "room": "Room 02"}, {"id": "seed03", "program": "BS Media and Communication Studies", "semester": "4", "section": "", "day": "Monday", "start": "11:00", "end": "12:30", "subject": "Media Culture & Society", "teacher": "Fatima", "room": "Room 02"}, {"id": "seed04", "program": "BS Digital Media and Marketing", "semester": "4", "section": "", "day": "Monday", "start": "11:00", "end": "12:30", "subject": "Media Culture & Society", "teacher": "Fatima", "room": "Room 02"}, {"id": "seed05", "program": "BS Media and Communication Studies", "semester": "8", "section": "", "day": "Monday", "start": "12:30", "end": "14:00", "subject": "Intercultural Communication", "teacher": "Dr. Akber Ali", "room": "Room 02"}, {"id": "seed06", "program": "BS Media and Communication Studies", "semester": "2", "section": "", "day": "Monday", "start": "14:00", "end": "15:30", "subject": "Introduction to Digital Media", "teacher": "Fatima", "room": "Room 02"}, {"id": "seed07", "program": "BS Digital Media and Marketing", "semester": "2", "section": "", "day": "Monday", "start": "14:00", "end": "15:30", "subject": "Introduction to Digital Media", "teacher": "Fatima", "room": "Room 02"}, {"id": "seed08", "program": "BS Media and Communication Studies", "semester": "2", "section": "", "day": "Monday", "start": "15:30", "end": "17:00", "subject": "Islamic Studies", "teacher": "Ikram", "room": "Room 02"}, {"id": "seed09", "program": "BS Digital Media and Marketing", "semester": "2", "section": "", "day": "Monday", "start": "15:30", "end": "17:00", "subject": "Islamic Studies", "teacher": "Ikram", "room": "Room 02"}, {"id": "seed10", "program": "BS Media and Communication Studies", "semester": "6", "section": "", "day": "Tuesday", "start": "09:30", "end": "11:00", "subject": "Research Methods-I", "teacher": "Dr. Akber Ali", "room": "Room 02"}, {"id": "seed11", "program": "BS Digital Media and Marketing", "semester": "6", "section": "", "day": "Tuesday", "start": "09:30", "end": "11:00", "subject": "Research Methods-I", "teacher": "Dr. Akber Ali", "room": "Room 02"}, {"id": "seed12", "program": "BS Media and Communication Studies", "semester": "8", "section": "", "day": "Tuesday", "start": "11:00", "end": "12:30", "subject": "AI Data Analytics in Digital Media and Marketing", "teacher": "Dr. Shams", "room": "Room 02"}, {"id": "seed13", "program": "BS Digital Media and Marketing", "semester": "8", "section": "", "day": "Tuesday", "start": "11:00", "end": "12:30", "subject": "AI Data Analytics in Digital Media and Marketing", "teacher": "Dr. Shams", "room": "Room 02"}, {"id": "seed14", "program": "BS Media and Communication Studies", "semester": "8", "section": "", "day": "Tuesday", "start": "12:30", "end": "14:00", "subject": "Intercultural Communication", "teacher": "Dr. Akber Ali", "room": "Room 02"}, {"id": "seed15", "program": "BS Media and Communication Studies", "semester": "4", "section": "", "day": "Tuesday", "start": "14:00", "end": "15:30", "subject": "PR & Advertising", "teacher": "Dr. Shams", "room": "Room 02"}, {"id": "seed16", "program": "BS Digital Media and Marketing", "semester": "4", "section": "", "day": "Tuesday", "start": "14:00", "end": "15:30", "subject": "PR & Advertising", "teacher": "Dr. Shams", "room": "Room 02"}, {"id": "seed17", "program": "BS Media and Communication Studies", "semester": "2", "section": "", "day": "Wednesday", "start": "09:30", "end": "11:00", "subject": "Introduction to Digital Media", "teacher": "Fatima", "room": "Room 02"}, {"id": "seed18", "program": "BS Digital Media and Marketing", "semester": "2", "section": "", "day": "Wednesday", "start": "09:30", "end": "11:00", "subject": "Introduction to Digital Media", "teacher": "Fatima", "room": "Room 02"}, {"id": "seed19", "program": "BS Media and Communication Studies", "semester": "6", "section": "", "day": "Wednesday", "start": "12:30", "end": "14:00", "subject": "Health Communication", "teacher": "Asifa Mussrat", "room": "Room 02"}, {"id": "seed20", "program": "BS Digital Media and Marketing", "semester": "6", "section": "", "day": "Wednesday", "start": "12:30", "end": "14:00", "subject": "Health Communication", "teacher": "Asifa Mussrat", "room": "Room 02"}, {"id": "seed21", "program": "BS Media and Communication Studies", "semester": "2", "section": "", "day": "Wednesday", "start": "14:00", "end": "15:30", "subject": "Information and Communication Technologies", "teacher": "Kashif", "room": "Room 02"}, {"id": "seed22", "program": "BS Digital Media and Marketing", "semester": "2", "section": "", "day": "Wednesday", "start": "14:00", "end": "15:30", "subject": "Information and Communication Technologies", "teacher": "Kashif", "room": "Room 02"}, {"id": "seed23", "program": "BS Media and Communication Studies", "semester": "4", "section": "", "day": "Wednesday", "start": "15:30", "end": "17:00", "subject": "Quantitative Reasoning-II", "teacher": "Nadeem", "room": "Room 02"}, {"id": "seed24", "program": "BS Digital Media and Marketing", "semester": "4", "section": "", "day": "Wednesday", "start": "15:30", "end": "17:00", "subject": "Quantitative Reasoning-II", "teacher": "Nadeem", "room": "Room 02"}, {"id": "seed25", "program": "BS Media and Communication Studies", "semester": "2", "section": "", "day": "Thursday", "start": "14:00", "end": "15:30", "subject": "Information and Communication Technologies", "teacher": "Kashif", "room": "Room 02"}, {"id": "seed26", "program": "BS Digital Media and Marketing", "semester": "2", "section": "", "day": "Thursday", "start": "14:00", "end": "15:30", "subject": "Information and Communication Technologies", "teacher": "Kashif", "room": "Room 02"}, {"id": "seed27", "program": "BS Media and Communication Studies", "semester": "4", "section": "", "day": "Thursday", "start": "15:30", "end": "17:00", "subject": "Quantitative Reasoning-II", "teacher": "Nadeem", "room": "Room 02"}, {"id": "seed28", "program": "BS Digital Media and Marketing", "semester": "4", "section": "", "day": "Thursday", "start": "15:30", "end": "17:00", "subject": "Quantitative Reasoning-II", "teacher": "Nadeem", "room": "Room 02"}, {"id": "seed29", "program": "BS Media and Communication Studies", "semester": "8", "section": "", "day": "Friday", "start": "11:00", "end": "12:30", "subject": "AI Data Analytics in Digital Media and Marketing", "teacher": "Dr. Shams", "room": "Room 02"}, {"id": "seed30", "program": "BS Digital Media and Marketing", "semester": "8", "section": "", "day": "Friday", "start": "11:00", "end": "12:30", "subject": "AI Data Analytics in Digital Media and Marketing", "teacher": "Dr. Shams", "room": "Room 02"}, {"id": "seed31", "program": "BS Media and Communication Studies", "semester": "8", "section": "", "day": "Friday", "start": "14:00", "end": "15:30", "subject": "Theories of Communication-II", "teacher": "Dr. Shams", "room": "Room 02"}, {"id": "seed32", "program": "BS Digital Media and Marketing", "semester": "8", "section": "", "day": "Friday", "start": "14:00", "end": "15:30", "subject": "Theories of Communication-II", "teacher": "Dr. Shams", "room": "Room 02"}];
+var SEED_TEACHERS = ["Asifa Mussrat", "Dr. Akber Ali", "Dr. Shams", "Fatima", "Ikram", "Kashif", "Nadeem"];
+function seedDb(){
+  return {
+    department:"Department of Media and Communication",
+    university:"Karakoram International University",
+    programs:[
+      {id:"bs-mcs", name:"BS Media and Communication Studies"},
+      {id:"bs-dmm", name:"BS Digital Media and Marketing"}
+    ],
+    sections:[], subjects:[], teachers: SEED_TEACHERS.slice(), rooms:["Room 02"], entries: JSON.parse(JSON.stringify(SEED_ENTRIES)), fileMeta:null, seedV: 2,
+    teacherRecords:[], sheets:[], cancellations:[], confirmations:[]
+  };
+}
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(db)); }catch(e){} }
+function loadLocal(){
+  try{ var raw = localStorage.getItem(LS_KEY); if(raw){ db = JSON.parse(raw); mergeSeed(); return; } }catch(e){}
+  db = seedDb(); saveLocal();
+}
+function mergeSeed(){
+  if(!db || (db.seedV || 0) >= 2) return;
+  db.entries = db.entries || []; db.teachers = db.teachers || []; db.rooms = db.rooms || [];
+  SEED_ENTRIES.forEach(function(se){
+    var exists = db.entries.some(function(e){ return e.program === se.program && String(e.semester) === String(se.semester) && e.day === se.day && e.start === se.start && e.subject === se.subject; });
+    if(!exists) db.entries.push(JSON.parse(JSON.stringify(se)));
+  });
+  SEED_TEACHERS.forEach(function(n){ if(db.teachers.indexOf(n) < 0) db.teachers.push(n); });
+  if(db.rooms.indexOf("Room 02") < 0) db.rooms.push("Room 02");
+  db.seedV = 2; saveLocal();
+}
+function catalogFromEntries(){
+  ["section|sections","subject|subjects","teacher|teachers","room|rooms"].forEach(function(pair){
+    var f = pair.split("|")[0], list = pair.split("|")[1];
+    db.entries.forEach(function(e){ var v=(e[f]||"").trim(); if(v && db[list].indexOf(v)<0) db[list].push(v); });
+  });
+}
+
+async function api(path, method, body){
+  var res = await fetch(path, { method: method||"GET", headers:{"Content-Type":"application/json"}, body: body?JSON.stringify(body):undefined });
+  var data = {}; try{ data = await res.json(); }catch(e){}
+  if(!res.ok) throw new Error(data.error || ("Request failed ("+res.status+")"));
+  return data;
+}
+
+
+/* SHEET-DATA-BEGIN — Google Sheets data layer */
+var SHEET_ID = "1E2D4gN-zUIBgpEwtoXcXnxufgOtO-raHFUgE01pS5wY";
+function dGviz(sheet){
+  return new Promise(function(resolve, reject){
+    var name = "dgv_" + sheet.replace(/\W/g, "") + "_" + Date.now();
+    var s = document.createElement("script");
+    var timer = setTimeout(function(){ done(new Error("timeout")); }, 20000);
+    function done(err, resp){
+      clearTimeout(timer);
+      try{ delete window[name]; }catch(e){ window[name] = undefined; }
+      if(s.parentNode) s.parentNode.removeChild(s);
+      if(err) reject(err); else resolve(resp);
+    }
+    window[name] = function(resp){ done(null, resp); };
+    s.onerror = function(){ done(new Error("load error")); };
+    s.src = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json;responseHandler:" + name + "&headers=1&sheet=" + encodeURIComponent(sheet);
+    document.head.appendChild(s);
+  });
+}
+function dCell(c){ if(!c) return ""; if(c.f != null && c.f !== "") return String(c.f); if(c.v == null) return ""; return String(c.v); }
+function dParse(json){
+  var tbl = json && json.table; if(!tbl) return [];
+  var heads = tbl.cols.map(function(c){ return (c.label || "").trim().toLowerCase(); });
+  return tbl.rows.map(function(r){
+    var o = {};
+    (r.c || []).forEach(function(c, i2){ o[heads[i2] || ("col" + i2)] = dCell(c); });
+    return o;
+  }).filter(function(o){ return Object.keys(o).some(function(k){ return o[k]; }); });
+}
+function dNormTime(v){
+  if(v == null) return "";
+  var s = String(v).trim();
+  var dm = s.match(/Date\(\d+,\d+,\d+,(\d+),(\d+)/);
+  if(dm){ var h = +dm[1], mi = +dm[2]; return (h < 10 ? "0" : "") + h + ":" + (mi < 10 ? "0" : "") + mi; }
+  var m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if(m){ var hh = +m[1]; if(m[3]){ if(m[3].toUpperCase() === "PM" && hh < 12) hh += 12; if(m[3].toUpperCase() === "AM" && hh === 12) hh = 0; } return (hh < 10 ? "0" : "") + hh + ":" + m[2]; }
+  return s;
+}
+function dNormDate(v){
+  if(v == null) return "";
+  var s = String(v).trim();
+  function z(x){ return (x < 10 ? "0" : "") + x; }
+  var dm = s.match(/Date\((\d+),(\d+),(\d+)/);
+  if(dm) return dm[1] + "-" + z(+dm[2] + 1) + "-" + z(+dm[3]);
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return m[1] + "-" + z(+m[2]) + "-" + z(+m[3]);
+  var d = new Date(s);
+  if(!isNaN(d)) return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate());
+  return s;
+}
+function dCapDay(d){ d = String(d || "").trim(); return d ? d.charAt(0).toUpperCase() + d.slice(1).toLowerCase() : ""; }
+function dEntry(o, i){
+  var e = { id: "s" + (i + 1), program: (o["program"] || "").trim(), semester: String(o["semester"] || "").replace(/[^0-9]/g, ""),
+    section: (o["section"] || "").trim(), day: dCapDay(o["day"]), start: dNormTime(o["start"]), end: dNormTime(o["end"]),
+    subject: (o["subject"] || "").trim(), teacher: (o["teacher"] || "").trim(), room: (o["classroom"] || o["room"] || "").trim() };
+  var dt = dNormDate(o["date"]);
+  if(dt) e.date = dt;
+  return e;
+}
+function dStatus(o){
+  return { date: dNormDate(o["date"]), subject: (o["subject"] || "").trim(), program: (o["program"] || "").trim(), status: (o["status"] || "").trim(), reason: (o["reason"] || "").trim() };
+}
+function dWeekday(ds){ var p = ds.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]); return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][d.getDay()]; }
+function dApplyStatus(nd, sr, n){
+  if(!sr.date || !sr.subject) return;
+  var st = sr.status.toLowerCase();
+  var isCancel = st.indexOf("cancel") === 0, isConfirm = st.indexOf("confirm") === 0;
+  if(!isCancel && !isConfirm) return;
+  nd.entries.forEach(function(e){
+    if(e.subject.trim().toLowerCase() !== sr.subject.toLowerCase()) return;
+    if(sr.program && sr.program.toLowerCase() !== e.program.toLowerCase() && progShort(sr.program) !== progShort(e.program)) return;
+    var applies = e.date ? (e.date === sr.date) : (dWeekday(sr.date) === e.day);
+    if(!applies) return;
+    if(isCancel) nd.cancellations.push({ id: "dc" + n + "_" + e.id, entryId: e.id, date: sr.date, by: "Google Sheet", reason: sr.reason || "", at: new Date().toISOString() });
+    else nd.confirmations.push({ id: "dk" + n + "_" + e.id, key: e.id + ":" + sr.date, entryId: e.id, date: sr.date, day: e.day, subject: e.subject, classTime: e.start, room: e.room, teacherName: e.teacher || "", teacherId: "", status: "confirmed", decidedBy: "Google Sheet", at: new Date().toISOString() });
+  });
+}
+async function loadSheetData(){
+  var res = await Promise.all([dGviz("Timetable"), dGviz("Status")]);
+  var rows = dParse(res[0]).map(dEntry).filter(function(e){ return e.program && e.day && e.start && e.subject; });
+  if(!rows.length) return false;
+  var nd = seedDb();
+  nd.entries = rows;
+  nd.teachers = []; nd.rooms = [];
+  rows.forEach(function(e){ if(e.teacher && nd.teachers.indexOf(e.teacher) < 0) nd.teachers.push(e.teacher); if(e.room && nd.rooms.indexOf(e.room) < 0) nd.rooms.push(e.room); });
+  nd.cancellations = []; nd.confirmations = [];
+  dParse(res[1]).map(dStatus).forEach(function(sr, i){ dApplyStatus(nd, sr, i); });
+  db = nd;
+  return true;
+}
+/* SHEET-DATA-END */
+
+async function init(){
+  var sheetOk = false;
+  try{ sheetOk = await loadSheetData(); }catch(e){ sheetOk = false; }
+  if(!sheetOk){ loadLocal(); }
+  if(!db.sheets) db.sheets = [];
+  if(!("fileMeta" in db)) db.fileMeta = null;
+  catalogFromEntries();
+  fillProgramSelects(); fillSectionFilter(); fillDatalists(); renderPrograms();
+  buildDayChips(); buildTDayChips(); fillTeacherSelect(); renderFileCard(); renderFileAdmin();
+  showStudent(); showPromptState(); restoreFilters();
+  try{ var me = await api("/api/admin/me"); if(me.admin){ /* session exists; admin still opens via button */ } }catch(e){}
+}
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function pktParts(){
+  var fmt = new Intl.DateTimeFormat("en-GB", { timeZone:"Asia/Karachi", weekday:"long", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false });
+  var parts = {};
+  fmt.formatToParts(new Date()).forEach(function(x){ parts[x.type] = x.value; });
+  return { day: parts.weekday, date: parts.year + "-" + parts.month + "-" + parts.day, minutes: (parseInt(parts.hour,10)%24)*60 + parseInt(parts.minute,10) };
+}
+function fmtTime(t){
+  if(!t) return "";
+  var m = String(t).match(/^(\d{1,2}):(\d{2})/); if(!m) return t;
+  var h = parseInt(m[1],10), mm = m[2], ap = h>=12 ? "PM":"AM"; h = h%12; if(h===0) h=12;
+  return h+":"+mm+" "+ap;
+}
+function timeRange(e){ return fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : ""); }
+function dayOrder(d){ var i = DAYS.indexOf(d); return i<0 ? 99 : i; }
+function selectedDayCount(){ return Object.keys(selectedDays).length; }
+function selectedDayList(){ return DAYS.filter(function(d){ return selectedDays[d]; }); }
+function buildDayChips(){
+  var html = DAYS.map(function(d){ return '<button type="button" class="day-chip" data-day="'+d+'">'+d+'</button>'; }).join("");
+  html += '<button type="button" class="day-chip" id="chipAll">All Week</button>';
+  $("dayChips").innerHTML = html;
+  Array.prototype.forEach.call($("dayChips").querySelectorAll("[data-day]"), function(b){
+    b.addEventListener("click", function(){
+      var d = b.getAttribute("data-day");
+      if(selectedDays[d]) delete selectedDays[d]; else selectedDays[d] = true;
+      syncChipStates();
+    });
+  });
+  $("chipAll").addEventListener("click", function(){
+    if(selectedDayCount() === DAYS.length){ selectedDays = {}; }
+    else { DAYS.forEach(function(d){ selectedDays[d] = true; }); }
+    syncChipStates();
+  });
+  syncChipStates();
+}
+function syncChipStates(){
+  Array.prototype.forEach.call($("dayChips").querySelectorAll("[data-day]"), function(b){
+    b.classList.toggle("on", !!selectedDays[b.getAttribute("data-day")]);
+  });
+  var all = $("chipAll"); if(all) all.classList.toggle("on", selectedDayCount() === DAYS.length);
+}
+function localPassword(){ try{ return localStorage.getItem(PW_LS_KEY) || LOCAL_ADMIN_PASSWORD; }catch(e){ return LOCAL_ADMIN_PASSWORD; } }
+function localRecovery(){ try{ return localStorage.getItem(REC_LS_KEY) || DEFAULT_RECOVERY; }catch(e){ return DEFAULT_RECOVERY; } }
+function localFile(){ try{ return JSON.parse(localStorage.getItem(FILE_LS_KEY) || "null"); }catch(e){ return null; } }
+function fileMetaNow(){ return serverMode ? db.fileMeta : localFile(); }
+function renderFileCard(){
+  var m = fileMetaNow();
+  $("fileCard").classList.toggle("hidden", !m);
+  if(m) $("fileInfo").textContent = (m.name || "Timetable file") + (m.uploadedAt ? " — uploaded " + String(m.uploadedAt).slice(0,10) : "");
+}
+function renderFileAdmin(){
+  var m = fileMetaNow();
+  $("fileAdminInfo").innerHTML = m ? '<span class="chip">Current file: '+esc(m.name || "")+'</span>' : '<span class="hint">No timetable PDF/image uploaded yet.</span>';
+}
+function sortEntries(list){
+  return list.slice().sort(function(a,b){
+    var d = dayOrder(a.day)-dayOrder(b.day); if(d) return d;
+    return String(a.start).localeCompare(String(b.start));
+  });
+}
+
+/* ---------- Student view ---------- */
+function fillProgramSelects(){
+  var opts = db.programs.map(function(p){ return '<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>'; }).join("");
+  $("fProgram").innerHTML = '<option value="">— Select Program —</option>' + opts;
+}
+function fillSectionFilter(){
+  var cur = $("fSection").value;
+  $("fSection").innerHTML = '<option value="">All Sections</option>' + db.sections.slice().sort().map(function(s){ return '<option>'+esc(s)+'</option>'; }).join("");
+  $("fSection").value = cur;
+}
+function fillDatalists(){
+  $("dlSections").innerHTML = db.sections.map(function(s){ return '<option value="'+esc(s)+'">'; }).join("");
+  $("dlSubjects").innerHTML = db.subjects.map(function(s){ return '<option value="'+esc(s)+'">'; }).join("");
+  $("dlTeachers").innerHTML = db.teachers.map(function(s){ return '<option value="'+esc(s)+'">'; }).join("");
+  $("dlRooms").innerHTML = db.rooms.map(function(s){ return '<option value="'+esc(s)+'">'; }).join("");
+}
+function showPromptState(){
+  currentResults = []; currentTitle = "";
+  if(!db.entries.length){
+    $("results").innerHTML = DEPT_HTML + '<div class="empty"><strong>No timetable uploaded yet</strong>The Department of Media and Communication has not published a timetable yet. Please check back later, or contact the department office.</div>';
+  } else {
+    $("results").innerHTML = DEPT_HTML + '<div class="empty"><strong>Department of Media and Communication — KIU</strong>Select your program above to see your classes, then press Show Classes.</div>';
+  }
+}
+function entryStatusToday(e){
+  var now = pktParts();
+  if(e.day !== now.day) return "";
+  if((db.cancellations || []).some(function(c){ return c.entryId === e.id && c.date === now.date; })) return "cancelled";
+  if((db.confirmations || []).some(function(c){ return c.entryId === e.id && c.date === now.date && c.status === "confirmed"; })) return "confirmed";
+  return "today";
+}
+function todayCancelReason(e){
+  var now = pktParts();
+  var c = (db.cancellations || []).find(function(x){ return x.entryId === e.id && x.date === now.date; });
+  return c ? (c.reason || "") : "";
+}
+function statusBadge(st){
+  if(st === "cancelled") return '<span class="badge bad">CANCELLED</span>';
+  if(st === "confirmed") return '<span class="badge ok">CONFIRMED</span>';
+  if(st === "today") return '<span class="badge ok">TODAY</span>';
+  return "";
+}
+function isExtra(e){ return !!(e && e.date); }
+function addDaysStr(ds, n){
+  var p = ds.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2] + n);
+  function z(x){ return (x < 10 ? "0" : "") + x; }
+  return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate());
+}
+function extraVisible(e){
+  if(!isExtra(e)) return true;
+  var today = pktParts().date;
+  return e.date >= today && e.date <= addDaysStr(today, 6);
+}
+function fmtDate(ds){
+  if(!ds) return "";
+  var p = ds.split("-");
+  return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+}
+function weekdayOfDate(ds){
+  var p = ds.split("-");
+  return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-US", { weekday: "long" });
+}
+function extraBadge(e){
+  return isExtra(e) ? ' <span class="badge" style="background:#e6f4ea;color:#137333">EXTRA CLASS \u00b7 ' + esc(fmtDate(e.date)) + '</span>' : "";
+}
+function progNameFor(short){
+  var pr = (db.programs || []).find(function(x){ return progShort(x.name) === short; });
+  return pr ? pr.name : "";
+}
+function classForOf(e){ return combinedLabel(e) ? "BOTH" : progShort(e.program); }
+async function saveClassFor(base, classFor, editingId){
+  var targets = classFor === "BOTH" ? ["MC", "DM"] : [classFor];
+  var targetNames = targets.map(progNameFor).filter(Boolean);
+  if(!targetNames.length) throw new Error("Programs are not loaded yet.");
+  var oldSibs = [];
+  if(editingId){
+    var old = (db.entries || []).find(function(x){ return x.id === editingId; });
+    if(old) oldSibs = siblingOf(old);
+  }
+  var saved = null;
+  if(serverMode){
+    for(var ti = 0; ti < targetNames.length; ti++){
+      var name = targetNames[ti];
+      var ex = oldSibs.find(function(x){ return x.program === name; });
+      var payload = Object.assign({}, base, { program: name });
+      var r = ex ? await api("/api/admin/entries/" + encodeURIComponent(ex.id), "PUT", payload)
+                 : await api("/api/admin/entries", "POST", payload);
+      if(!saved) saved = r.entry;
+    }
+    for(var oi = 0; oi < oldSibs.length; oi++){
+      if(targetNames.indexOf(oldSibs[oi].program) < 0)
+        await api("/api/admin/entries/" + encodeURIComponent(oldSibs[oi].id), "DELETE");
+    }
+    await reloadFromServer(); await loadAdminData();
+    if(saved) saved = (db.entries || []).find(function(x){ return x.id === saved.id; }) || saved;
+  } else {
+    targetNames.forEach(function(name){
+      var ex = oldSibs.find(function(x){ return x.program === name; });
+      if(ex){
+        var i = db.entries.findIndex(function(x){ return x.id === ex.id; });
+        if(i >= 0){ db.entries[i] = Object.assign({}, db.entries[i], base, { program: name }); if(!saved) saved = db.entries[i]; }
+      } else {
+        var ne = Object.assign({}, base, { program: name, id: "e" + Date.now().toString(36) + Math.floor(Math.random() * 997) });
+        db.entries.push(ne); if(!saved) saved = ne;
+      }
+    });
+    oldSibs.forEach(function(o){
+      if(targetNames.indexOf(o.program) < 0) db.entries = db.entries.filter(function(x){ return x.id !== o.id; });
+    });
+  }
+  return saved;
+}
+function combinedLabel(e){
+  var progs = [progShort(e.program)];
+  (db.entries || []).forEach(function(x){
+    if(x.id !== e.id && x.day === e.day && x.start === e.start && x.subject === e.subject && String(x.semester) === String(e.semester) && (x.section || "") === (e.section || "")){
+      var ps = progShort(x.program);
+      if(progs.indexOf(ps) < 0) progs.push(ps);
+    }
+  });
+  if(progs.length < 2) return "";
+  var order = { MC: 0, DM: 1 };
+  progs.sort(function(a, b){ return (order[a] === undefined ? 2 : order[a]) - (order[b] === undefined ? 2 : order[b]); });
+  return progs.join("/");
+}
+function combinedBadge(e){
+  var c = combinedLabel(e);
+  if(c) return ' <span class="badge" style="background:#e8eefc;color:var(--navy)">Combined ' + esc(c) + '</span>';
+  return ' <span class="badge" style="background:#f1f4f8;color:var(--muted)">Only ' + esc(progShort(e.program)) + '</span>';
+}
+var DEPT_HTML = '<p class="sub" style="margin:0 0 8px;font-weight:700;color:var(--navy)">Department of Media and Communication — Karakoram International University (KIU)</p>';
+function renderResults(list, title, metaChips){
+  currentView = "student";
+  currentResults = sortEntries(list); currentTitle = title;
+  if(!currentResults.length){
+    $("results").innerHTML = '<div class="empty"><strong>No classes found</strong>No classes are available for the selected filters. Try a different semester, section or day — or use View Full Timetable.</div>';
+    return;
+  }
+  var html = DEPT_HTML + '<div class="result-meta"><strong>'+esc(title)+'</strong>' + (metaChips||"") + '<span class="chip">'+currentResults.length+' class'+(currentResults.length===1?"":"es")+'</span></div>';
+  html += '<p class="sub" style="margin:2px 0 8px"><span class="badge ok">GREEN</span> class will be held &nbsp;<span class="badge bad">RED</span> class is cancelled</p>';
+  html += '<div class="table-wrap"><table class="rtable"><thead><tr><th>Day</th><th>Subject</th><th>Teacher</th><th>Classroom</th><th>Time</th></tr></thead><tbody>';
+  var lastDay = null, groupByDay = currentResults.some(function(e){ return e.day !== currentResults[0].day; }) || selectedDayCount() !== 1;
+  currentResults.forEach(function(e){
+    if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
+    var st = entryStatusToday(e);
+    html += '<tr class="'+(st === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st)+combinedBadge(e)+extraBadge(e)+(st === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Teacher">'+esc(e.teacher||"—")+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  $("results").innerHTML = html;
+}
+function progShort(name){
+  if(/Digital Media/i.test(name || "")) return "DM";
+  if(/Media and Communication Studies/i.test(name || "")) return "MC";
+  return name || "";
+}
+function ordSem(n){
+  var m = {1:"1st",2:"2nd",3:"3rd",4:"4th",5:"5th",6:"6th",7:"7th",8:"8th"};
+  return m[n] || (n + "th");
+}
+function slotList(entries){
+  var seen = {}, out = [];
+  (entries || []).forEach(function(e){ var k = e.start + "|" + (e.end || ""); if(e.start && !seen[k]){ seen[k] = 1; out.push({ start: e.start, end: e.end || "" }); } });
+  out.sort(function(a, b){ return a.start.localeCompare(b.start); });
+  return out;
+}
+function renderSheetGrid(list, title){
+  currentView = "sheet";
+  currentResults = sortEntries(list); currentTitle = title;
+  if(!currentResults.length){
+    $("results").innerHTML = '<div class="empty"><strong>No classes found</strong>No classes are available for the selected filters.</div>';
+    return;
+  }
+  var slots = slotList(currentResults);
+  var now = pktParts();
+  var days = DAYS.filter(function(d){ return currentResults.some(function(e){ return e.day === d; }); });
+  var html = DEPT_HTML + '<div class="result-meta"><strong>' + esc(title) + '</strong><span class="chip">' + currentResults.length + ' classes</span></div>';
+  html += '<p class="sub" style="margin:2px 0 8px"><span class="badge ok">GREEN</span> class will be held &nbsp;<span class="badge bad">RED</span> class is cancelled &nbsp;·&nbsp; scroll the sheet sideways on a phone</p>';
+  html += '<div class="grid-wrap"><table class="sheet"><thead><tr><th class="day-col">Day</th>';
+  slots.forEach(function(s){ html += '<th>' + esc(fmtTime(s.start)) + (s.end ? ' – ' + esc(fmtTime(s.end)) : '') + '</th>'; });
+  html += '</tr></thead><tbody>';
+  days.forEach(function(day){
+    html += '<tr' + (day === now.day ? ' class="today-row"' : '') + '><th class="day-col">' + esc(day) + (day === now.day ? '<br><span class="badge ok">TODAY</span>' : '') + '</th>';
+    slots.forEach(function(s){
+      var cell = currentResults.filter(function(e){ return e.day === day && e.start === s.start && (e.end || "") === s.end; });
+      html += '<td>';
+      var groups = {};
+      cell.forEach(function(e){
+        var gk = [e.subject, e.teacher || "", e.semester, e.section || "", e.room || "", e.date || ""].join("|");
+        if(!groups[gk]) groups[gk] = { e: e, progs: [] };
+        var ps = progShort(e.program);
+        if(groups[gk].progs.indexOf(ps) < 0) groups[gk].progs.push(ps);
+      });
+      Object.keys(groups).forEach(function(gk){
+        var g = groups[gk], e = g.e;
+        var st = entryStatusToday(e);
+        var anyCancelled = cell.some(function(x){ return x.subject === e.subject && entryStatusToday(x) === "cancelled"; });
+        if(anyCancelled) st = "cancelled";
+        var cls = st === "cancelled" ? "cell-class cancelled" : (st === "confirmed" ? "cell-class confirmed" : "cell-class");
+        var order = { MC: 0, DM: 1 };
+        g.progs.sort(function(a, b){ return (order[a] === undefined ? 2 : order[a]) - (order[b] === undefined ? 2 : order[b]); });
+        html += '<div class="' + cls + '"><strong>' + esc(e.subject) + '</strong>'
+          + '<span class="cell-meta">BS-' + esc(ordSem(e.semester)) + ' ' + esc(g.progs.length > 1 ? g.progs.join("/") : "Only " + g.progs[0]) + (e.section ? ' · Sec ' + esc(e.section) : '') + (e.room ? ' · ' + esc(e.room) : '') + '</span>'
+          + (e.teacher ? '<span class="cell-teacher">' + esc(e.teacher) + '</span>' : '')
+          + statusBadge(st) + extraBadge(e)
+          + (st === "cancelled" && todayCancelReason(e) ? '<span class="hint" style="display:block">Reason: ' + esc(todayCancelReason(e)) + '</span>' : '')
+          + '</div>';
+      });
+      html += '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  $("results").innerHTML = html;
+}
+$("sheetBtn").addEventListener("click", function(){
+  var program = $("fProgram").value, sem = $("fSemester").value, sec = $("fSection").value;
+  var list = db.entries.filter(function(e){
+    if(program && e.program !== program) return false;
+    if(!extraVisible(e)) return false;
+    if(sem && String(e.semester) !== String(sem)) return false;
+    if(sec && (e.section || "") !== sec) return false;
+    return true;
+  });
+  renderSheetGrid(list, "Weekly Timetable — Sheet View" + (program ? " · " + program : " · All Programs"));
+});
+function applyFilters(full){
+  var program = $("fProgram").value;
+  if(!full && !program){
+    $("results").innerHTML = '<div class="empty"><strong>Please select your degree program first</strong>Choose BS Media and Communication Studies or BS Digital Media and Marketing, then press Show Classes.</div>';
+    return;
+  }
+  var sem = $("fSemester").value, sec = $("fSection").value, dayList = selectedDayList();
+  var list = db.entries.filter(function(e){
+    if(program && e.program !== program) return false;
+    if(!extraVisible(e)) return false;
+    if(!full){
+      if(sem && String(e.semester) !== sem) return false;
+      if(sec && e.section !== sec) return false;
+      if(dayList.length && dayList.indexOf(e.day) < 0) return false;
+    }
+    return true;
+  });
+  var chips = "";
+  if(program) chips += '<span class="chip">'+esc(program)+'</span>';
+  if(!full && sem) chips += '<span class="chip">Semester '+esc(sem)+'</span>';
+  if(!full && sec) chips += '<span class="chip">Section '+esc(sec)+'</span>';
+  if(!full && dayList.length && dayList.length < DAYS.length) chips += '<span class="chip">'+esc(dayList.join(", "))+'</span>';
+  if(!full && dayList.length === DAYS.length) chips += '<span class="chip">All Week</span>';
+  renderResults(list, full ? "Full Timetable" : "Your Timetable", chips);
+  if(!full) saveFilters();
+}
+
+$("filterForm").addEventListener("submit", function(ev){ ev.preventDefault(); applyFilters(false); });
+$("fullBtn").addEventListener("click", function(){ applyFilters(true); });
+$("clearBtn").addEventListener("click", function(){
+  $("fProgram").value=""; $("fSemester").value=""; $("fSection").value="";
+  selectedDays = {}; syncChipStates();
+  try{ localStorage.removeItem(FILTERS_LS); }catch(e){}
+  showPromptState();
+});
+function printCurrent(){
+  if(!currentResults.length){ if(currentView === "teacher") applyTeacherFilters(true); else applyFilters(true); }
+  setTimeout(function(){ window.print(); }, 60);
+}
+function pdfCurrent(){
+  if(!currentResults.length){ if(currentView === "teacher") applyTeacherFilters(true); else applyFilters(true); if(!currentResults.length) return; }
+  if(!(window.jspdf && window.jspdf.jsPDF)){ window.print(); return; }
+  var doc = new window.jspdf.jsPDF({unit:"pt", format:"a4"});
+  var W = doc.internal.pageSize.getWidth();
+  doc.setFontSize(13); doc.setTextColor(13,59,94);
+  doc.text("Karakoram International University", 40, 46);
+  doc.setFontSize(11); doc.setTextColor(60,60,60);
+  doc.text("Department of Media and Communication — " + (currentTitle||"Timetable"), 40, 64);
+  var y = 88; doc.setFontSize(9.5);
+  var cols = [40, 115, 275, 395, 485];
+  doc.setFont(undefined,"bold"); doc.text("Day", cols[0], y); doc.text("Subject", cols[1], y); doc.text(currentView === "teacher" ? "Class" : "Teacher", cols[2], y); doc.text("Room", cols[3], y); doc.text("Time", cols[4], y);
+  doc.setFont(undefined,"normal"); y += 8; doc.line(40, y, W-40, y); y += 16;
+  currentResults.forEach(function(e){
+    if(y > 790){ doc.addPage(); y = 56; }
+    doc.text(doc.splitTextToSize(e.day||"", 70), cols[0], y);
+    doc.text(doc.splitTextToSize((e.subject||"") + (entryStatusToday(e) === "cancelled" ? " (CANCELLED)" : ""), 155), cols[1], y);
+    doc.text(doc.splitTextToSize(currentView === "teacher" ? ((e.program||"") + " Sem " + (e.semester||"")) : (e.teacher||"—"), 115), cols[2], y);
+    doc.text(doc.splitTextToSize(e.room||"—", 85), cols[3], y);
+    doc.text(doc.splitTextToSize(timeRange(e), 70), cols[4], y);
+    y += 18;
+  });
+  doc.save("kiu-media-timetable.pdf");
+}
+$("printBtn").addEventListener("click", printCurrent);
+$("pdfBtn").addEventListener("click", pdfCurrent);
+$("tPrintBtn").addEventListener("click", printCurrent);
+$("tPdfBtn").addEventListener("click", pdfCurrent);
+
+/* ---------- View switching ---------- */
+function showStudent(){ $("studentView").classList.remove("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("adminToggleBtn").textContent = "Admin Login"; }
+function showLogin(){ $("studentView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("loginView").classList.remove("hidden"); }
+function showAdmin(){ $("studentView").classList.add("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.remove("hidden"); $("adminToggleBtn").textContent = "Student View"; renderAdminGrid(); renderTeachers(); renderPendingSheets(); if(serverMode) loadAdminData(); }
+async function loadAdminData(){
+  try{
+    var d = await api("/api/admin/data");
+    db.teacherRecords = d.teacherRecords || [];
+    db.cancellations = d.cancellations || db.cancellations || []; db.confirmations = d.confirmations || [];
+    db.sheets = d.sheets || []; renderPendingSheets();
+    renderTeachers(); renderAdminGrid();
+  }catch(e){}
+}
+var adminOpen = false;
+$("adminToggleBtn").addEventListener("click", async function(){
+  if(!$("adminView").classList.contains("hidden")){ showStudent(); return; }
+  if(serverMode){
+    try{ var me = await api("/api/admin/me"); if(me.admin){ showAdmin(); return; } }catch(e){}
+  } else if(sessionStorage.getItem("kiu_media_admin")==="1"){ showAdmin(); return; }
+  showLogin();
+});
+$("loginBackBtn").addEventListener("click", showStudent);
+
+$("loginForm").addEventListener("submit", async function(ev){
+  ev.preventDefault();
+  $("loginMsg").innerHTML = '<div class="msg err">This website is managed through its Google Sheet — there is no separate admin panel. <a href="https://docs.google.com/spreadsheets/d/1E2D4gN-zUIBgpEwtoXcXnxufgOtO-raHFUgE01pS5wY/edit" target="_blank" rel="noopener">Open the Timetable Sheet</a> to add or change classes.</div>';
+  return;
+  var pw = $("adminPassword").value;
+  $("loginMsg").innerHTML = "";
+  if(serverMode){
+    try{ await api("/api/admin/login","POST",{password:pw}); $("adminPassword").value=""; showAdmin(); }
+    catch(e){ $("loginMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+  } else {
+    if(pw === localPassword()){ sessionStorage.setItem("kiu_media_admin","1"); $("adminPassword").value=""; showAdmin(); }
+    else $("loginMsg").innerHTML = '<div class="msg err">Incorrect password.</div>';
+  }
+});
+$("logoutBtn").addEventListener("click", async function(){
+  if(serverMode){ try{ await api("/api/admin/logout","POST",{}); }catch(e){} }
+  sessionStorage.removeItem("kiu_media_admin");
+  showStudent();
+});
+
+/* ---------- Admin: entries ---------- */
+function adminSay(html, ok){ $("adminMsg").innerHTML = html ? '<div class="msg '+(ok?"ok":"err")+'">'+html+'</div>' : ""; }
+function siblingOf(e){
+  return (db.entries || []).filter(function(x){ return x.day === e.day && x.start === e.start && x.subject === e.subject && (x.teacher || "") === (e.teacher || ""); });
+}
+function localCancelClass(entry, by, reason){
+  var now = pktParts();
+  db.cancellations = db.cancellations || [];
+  if(!db.cancellations.some(function(x){ return x.entryId === entry.id && x.date === now.date; }))
+    db.cancellations.unshift({ id:"x"+Date.now().toString(36), entryId: entry.id, date: now.date, by: by, reason: reason || "", at: new Date().toISOString() });
+  var conf = (db.confirmations || []).find(function(x){ return x.key === entry.id + ":" + now.date; });
+  if(conf){ conf.status = "cancelled"; conf.decidedBy = by; if(reason) conf.reason = reason; }
+  saveLocal();
+}
+function localConfirmClass(entry, by){
+  var now = pktParts();
+  db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === entry.id && x.date === now.date); });
+  db.confirmations = db.confirmations || [];
+  var key = entry.id + ":" + now.date;
+  var conf = db.confirmations.find(function(x){ return x.key === key; });
+  if(!conf){ conf = { id:"c"+Date.now().toString(36)+Math.floor(Math.random()*999), key:key, entryId: entry.id, date: now.date, day: entry.day, subject: entry.subject, classTime: entry.start, room: entry.room, teacherName: entry.teacher || "", teacherId: "", status: "pending", decidedBy: "", at: new Date().toISOString() }; db.confirmations.unshift(conf); }
+  conf.status = "confirmed"; conf.decidedBy = by;
+  saveLocal();
+}
+async function cancelEntryToday(id){
+  var e = (db.entries || []).find(function(x){ return x.id === id; }); if(!e) return;
+  if(!confirm("Cancel TODAY's " + e.subject + " class? It will show RED (CANCELLED) on the website.")) return;
+  var reason = prompt("Reason for cancelling (optional). Students will see this reason on the website next to the cancelled class:", "");
+  if(reason === null) return;
+  try{
+    if(serverMode){ await api("/api/admin/cancel-class", "POST", { entryId: id, reason: reason }); await reloadFromServer(); await loadAdminData(); }
+    else siblingOf(e).forEach(function(sib){ localCancelClass(sib, "admin", reason); });
+    refreshAfterChange();
+  }catch(err){ alert(err.message); }
+}
+async function confirmEntryToday(id){
+  var e = (db.entries || []).find(function(x){ return x.id === id; }); if(!e) return;
+  try{
+    if(serverMode){ await api("/api/admin/confirm-class", "POST", { entryId: id }); await reloadFromServer(); await loadAdminData(); }
+    else siblingOf(e).forEach(function(sib){ localConfirmClass(sib, "admin"); });
+    refreshAfterChange();
+  }catch(err){ alert(err.message); }
+}
+async function uncancelEntryToday(id){
+  var e = (db.entries || []).find(function(x){ return x.id === id; });
+  try{
+    if(serverMode){ await api("/api/admin/uncancel-class", "POST", { entryId: id }); await reloadFromServer(); await loadAdminData(); }
+    else if(e) {
+      var now = pktParts();
+      siblingOf(e).forEach(function(sib){
+        db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === sib.id && x.date === now.date); });
+        db.confirmations = (db.confirmations || []).filter(function(x){ return !(x.key === sib.id + ":" + now.date); });
+      });
+      saveLocal();
+    }
+    refreshAfterChange();
+  }catch(err){ alert(err.message); }
+}
+function refreshAfterChange(){
+  catalogFromEntries(); fillSectionFilter(); fillDatalists(); renderPrograms(); renderAdminGrid(); fillTeacherSelect(); renderTeachers();
+  if(!$("studentView").classList.contains("hidden")) showPromptState();
+}
+async function reloadFromServer(){
+  var keep = { teacherRecords: db.teacherRecords || [], confirmations: db.confirmations || [] };
+  var data = await api("/api/timetable"); db = data;
+  db.teacherRecords = keep.teacherRecords; db.confirmations = keep.confirmations;
+  catalogFromEntries();
+  fillProgramSelects(); refreshAfterChange();
+}
+/* ---------- Admin: Excel-style grid editor ---------- */
+function renderAdminGrid(){
+  var box = $("adminGrid"); if(!box) return;
+  var entries = db.entries || [];
+  var slots = slotList(entries);
+  var now = pktParts();
+  var days = DAYS.filter(function(d){ return d !== "Saturday" || entries.some(function(e){ return e.day === d; }); });
+  if(!slots.length){ box.innerHTML = '<div class="empty"><strong>No classes yet</strong>Add the first class with the form above — it will appear here in the sheet.</div>'; return; }
+  var html = '<div class="grid-wrap"><table class="sheet"><thead><tr><th class="day-col">Day</th>';
+  slots.forEach(function(s){ html += '<th>' + esc(fmtTime(s.start)) + (s.end ? ' – ' + esc(fmtTime(s.end)) : '') + '</th>'; });
+  html += '</tr></thead><tbody>';
+  days.forEach(function(day){
+    html += '<tr' + (day === now.day ? ' class="today-row"' : '') + '><th class="day-col">' + esc(day) + (day === now.day ? '<br><span class="badge ok">TODAY</span>' : '') + '</th>';
+    slots.forEach(function(s){
+      var cell = entries.filter(function(e){ return e.day === day && e.start === s.start && (e.end || "") === s.end; });
+      html += '<td>';
+      cell.forEach(function(e){
+        var st = entryStatusToday(e);
+        var cls = st === "cancelled" ? "blk cancelled" : (st === "confirmed" ? "blk confirmed" : "blk");
+        if(isExtra(e) && e.date < pktParts().date) cls += " past";
+        html += '<button type="button" class="' + cls + '" data-geid="' + esc(e.id) + '"><strong>' + esc(e.subject) + '</strong>'
+          + '<span class="cell-meta">BS-' + esc(ordSem(e.semester)) + ' ' + esc(combinedLabel(e) || ("Only " + progShort(e.program))) + (e.section ? ' · Sec ' + esc(e.section) : '') + '</span>'
+          + (e.teacher ? '<span class="cell-teacher">' + esc(e.teacher) + '</span>' : '')
+          + statusBadge(st) + combinedBadge(e) + extraBadge(e) + '</button>';
+      });
+      html += '<button type="button" class="cell-add" data-geadd="' + esc(day) + '|' + esc(s.start) + '|' + esc(s.end) + '">+</button></td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  box.innerHTML = html;
+  Array.prototype.forEach.call(box.querySelectorAll("[data-geid]"), function(b){ b.addEventListener("click", function(){ openCellEditor(b.getAttribute("data-geid")); }); });
+  Array.prototype.forEach.call(box.querySelectorAll("[data-geadd]"), function(b){ b.addEventListener("click", function(){ var parts = b.getAttribute("data-geadd").split("|"); openCellEditor(null, parts[0], parts[1], parts[2]); }); });
+}
+function openCellEditor(id, day, start, end){
+  var e = id ? (db.entries || []).find(function(x){ return x.id === id; }) : null;
+  $("geDay").innerHTML = DAYS.map(function(d){ return '<option>' + d + '</option>'; }).join("");
+  $("geId").value = e ? e.id : "";
+  if(e){
+    $("geTitle").textContent = "Edit Class — " + e.subject;
+    $("geFor").value = classForOf(e); $("geSemester").value = e.semester; $("geSection").value = e.section || "";
+    $("geDay").value = e.day; $("geStart").value = e.start || ""; $("geEnd").value = e.end || "";
+    $("geSubject").value = e.subject || ""; $("geTeacher").value = e.teacher || ""; $("geRoom").value = e.room || "";
+    $("geExtra").checked = !!e.date; $("geDate").value = e.date || "";
+    $("geDelete").classList.remove("hidden");
+  } else {
+    $("geTitle").textContent = "Add Class — " + day + " " + fmtTime(start);
+    $("geFor").value = "BOTH";
+    $("geSemester").value = ""; $("geSection").value = "";
+    $("geDay").value = day; $("geStart").value = start || ""; $("geEnd").value = end || "";
+    $("geSubject").value = ""; $("geTeacher").value = ""; $("geRoom").value = "Room 02";
+    $("geExtra").checked = false; $("geDate").value = "";
+    $("geDelete").classList.add("hidden");
+  }
+  var now = pktParts();
+  var st = e ? entryStatusToday(e) : "";
+  $("geConfirmToday").checked = st === "confirmed";
+  $("geCancelToday").checked = st === "cancelled";
+  $("geReason").value = e ? todayCancelReason(e) : "";
+  var classDay = e ? e.day : day;
+  $("geTickHint").textContent = classDay === now.day
+    ? "This class is TODAY: the ticks set its status on the website for today. Unticking both removes today's decision."
+    : "The Confirm / Cancel ticks apply only when the class day is today (" + now.day + ").";
+  $("geMsg").innerHTML = "";
+  $("cellEditor").classList.remove("hidden");
+  $("cellEditor").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function closeCellEditor(){ $("cellEditor").classList.add("hidden"); }
+$("geClose").addEventListener("click", closeCellEditor);
+$("geDate").addEventListener("change", function(){ if($("geDate").value){ $("geExtra").checked = true; $("geDay").value = weekdayOfDate($("geDate").value); } });
+$("eDate").addEventListener("change", function(){ if($("eDate").value){ $("eExtra").checked = true; $("eDay").value = weekdayOfDate($("eDate").value); } });
+$("geConfirmToday").addEventListener("change", function(){ if($("geConfirmToday").checked) $("geCancelToday").checked = false; });
+$("geCancelToday").addEventListener("change", function(){ if($("geCancelToday").checked) $("geConfirmToday").checked = false; });
+$("geDelete").addEventListener("click", async function(){
+  var id = $("geId").value; if(!id) return;
+  if(!confirm("Delete this class entry? It will be removed from the timetable for everyone.")) return;
+  try{
+    if(serverMode){ await api("/api/admin/entries/" + encodeURIComponent(id), "DELETE"); await reloadFromServer(); await loadAdminData(); }
+    else { db.entries = db.entries.filter(function(x){ return x.id !== id; }); saveLocal(); }
+    closeCellEditor(); refreshAfterChange();
+    $("gridMsg").innerHTML = '<div class="msg ok">Class deleted from the sheet.</div>';
+  }catch(err){ $("geMsg").innerHTML = '<div class="msg err">' + esc(err.message) + '</div>'; }
+});
+$("geSave").addEventListener("click", async function(){
+  var id = $("geId").value;
+  var base = {
+    semester: $("geSemester").value, section: $("geSection").value.trim(),
+    day: $("geDay").value, start: $("geStart").value, end: $("geEnd").value,
+    subject: $("geSubject").value.trim(), teacher: $("geTeacher").value.trim(), room: $("geRoom").value.trim(),
+    date: $("geExtra").checked ? $("geDate").value : ""
+  };
+  if(!base.semester || !base.day || !base.start || !base.subject){
+    $("geMsg").innerHTML = '<div class="msg err">Semester, Day, Start time and Subject are required.</div>'; return;
+  }
+  try{
+    if(base.date) base.day = weekdayOfDate(base.date);
+    if($("geExtra").checked && !$("geDate").value){ $("geMsg").innerHTML = '<div class="msg err">Please pick the date for the extra class.</div>'; return; }
+    var saved = await saveClassFor(base, $("geFor").value, id || null);
+    var nowP = pktParts();
+    if(saved && saved.day === nowP.day){
+      if(serverMode){
+        if($("geCancelToday").checked) await api("/api/admin/cancel-class", "POST", { entryId: saved.id, reason: $("geReason").value.trim() });
+        else if($("geConfirmToday").checked) await api("/api/admin/confirm-class", "POST", { entryId: saved.id });
+        else await api("/api/admin/uncancel-class", "POST", { entryId: saved.id });
+        await reloadFromServer(); await loadAdminData();
+      } else {
+        var sibs = siblingOf(saved);
+        if($("geCancelToday").checked) sibs.forEach(function(sib){ localCancelClass(sib, "admin", $("geReason").value.trim()); });
+        else if($("geConfirmToday").checked) sibs.forEach(function(sib){ localConfirmClass(sib, "admin"); });
+        else sibs.forEach(function(sib){
+          db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === sib.id && x.date === nowP.date); });
+          db.confirmations = (db.confirmations || []).filter(function(x){ return !(x.key === sib.id + ":" + nowP.date); });
+        });
+        saveLocal();
+      }
+    } else if(!serverMode){ saveLocal(); }
+    closeCellEditor(); refreshAfterChange();
+    $("gridMsg").innerHTML = '<div class="msg ok">Saved. The sheet is updated.</div>';
+  }catch(err){ $("geMsg").innerHTML = '<div class="msg err">' + esc(err.message) + '</div>'; }
+});
+
+function startEdit(id){
+  var e = db.entries.find(function(x){ return x.id===id; }); if(!e) return;
+  $("eId").value = e.id; $("eFor").value = classForOf(e); $("eSemester").value = e.semester;
+  $("eSection").value = e.section||""; $("eDay").value = e.day; $("eStart").value = e.start||""; $("eEnd").value = e.end||"";
+  $("eSubject").value = e.subject||""; $("eExtra").checked = !!e.date; $("eDate").value = e.date||""; $("eTeacher").value = e.teacher||""; $("eRoom").value = e.room||"";
+  $("saveEntryBtn").textContent = "Save Changes";
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+$("cancelEditBtn").addEventListener("click", function(){ $("entryForm").reset(); $("eId").value=""; $("saveEntryBtn").textContent="Add Class"; });
+async function delEntry(id){
+  if(!confirm("Delete this class entry? It will be removed from the timetable for everyone.")) return;
+  try{
+    if(serverMode){
+      await api("/api/admin/entries/"+encodeURIComponent(id), "DELETE");
+      await reloadFromServer(); await loadAdminData();
+    } else {
+      db.entries = db.entries.filter(function(x){ return x.id!==id; });
+      saveLocal(); refreshAfterChange();
+    }
+    adminSay("Entry deleted.", true);
+  }catch(e){ adminSay(esc(e.message), false); }
+}
+$("entryForm").addEventListener("submit", async function(ev){
+  ev.preventDefault();
+  var base = {
+    semester: $("eSemester").value, section: $("eSection").value.trim(),
+    day: $("eDay").value, start: $("eStart").value, end: $("eEnd").value,
+    subject: $("eSubject").value.trim(), teacher: $("eTeacher").value.trim(), room: $("eRoom").value.trim(),
+    date: $("eExtra").checked ? $("eDate").value : ""
+  };
+  var id = $("eId").value;
+  if(base.date) base.day = weekdayOfDate(base.date);
+  if($("eExtra").checked && !$("eDate").value){ adminSay("Please pick the date for the extra class.", false); return; }
+  try{
+    await saveClassFor(base, $("eFor").value, id || null);
+    if(!serverMode){ saveLocal(); refreshAfterChange(); }
+    $("entryForm").reset(); $("eId").value=""; $("saveEntryBtn").textContent="Add Class";
+    adminSay(id ? "Entry updated and saved." : "Class added and saved.", true);
+  }catch(e){ adminSay(esc(e.message), false); }
+});
+
+/* ---------- Admin: programs ---------- */
+function renderPrograms(){
+  $("programList").innerHTML = db.programs.map(function(p){
+    return '<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><span style="flex:1">'+esc(p.name)+'</span><button class="btn danger small" data-progdel="'+esc(p.id)+'">Remove</button></div>';
+  }).join("") || '<p class="sub">No programs yet.</p>';
+  Array.prototype.forEach.call(document.querySelectorAll("[data-progdel]"), function(b){
+    b.addEventListener("click", async function(){
+      if(!confirm("Remove this program? Existing timetable entries for it will stay but the program will no longer appear in the filters.")) return;
+      try{
+        if(serverMode){ await api("/api/admin/programs/"+encodeURIComponent(b.getAttribute("data-progdel")), "DELETE"); await reloadFromServer(); }
+        else { db.programs = db.programs.filter(function(x){ return x.id!==b.getAttribute("data-progdel"); }); saveLocal(); fillProgramSelects(); renderPrograms(); }
+      }catch(e){ adminSay(esc(e.message), false); }
+    });
+  });
+}
+$("programForm").addEventListener("submit", async function(ev){
+  ev.preventDefault();
+  var name = $("newProgram").value.trim(); if(!name) return;
+  try{
+    if(serverMode){ await api("/api/admin/programs","POST",{name:name}); await reloadFromServer(); }
+    else {
+      if(db.programs.some(function(p){ return p.name.toLowerCase()===name.toLowerCase(); })) { adminSay("That program already exists.", false); return; }
+      db.programs.push({id:"p"+Date.now().toString(36), name:name}); saveLocal(); fillProgramSelects(); renderPrograms();
+    }
+    $("newProgram").value=""; adminSay("Program added.", true);
+  }catch(e){ adminSay(esc(e.message), false); }
+});
+
+/* ---------- Admin: CSV import ---------- */
+function parseCsvClient(text){
+  var rows=[], row=[], cur="", inQ=false, s=String(text||"").replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+  for(var i=0;i<s.length;i++){ var ch=s[i];
+    if(inQ){ if(ch==='"'){ if(s[i+1]==='"'){ cur+='"'; i++; } else inQ=false; } else cur+=ch; }
+    else if(ch==='"') inQ=true;
+    else if(ch===","){ row.push(cur); cur=""; }
+    else if(ch==="\n"){ row.push(cur); rows.push(row); row=[]; cur=""; }
+    else cur+=ch;
+  }
+  if(cur!==""||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(function(r){ return r.some(function(c){ return String(c).trim()!==""; }); });
+}
+$("templateBtn").addEventListener("click", function(){
+  var csv = "Program,Semester,Section,Day,Start,End,Subject,Teacher,Classroom\n";
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"})); a.download = "timetable-template.csv"; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+});
+$("importBtn").addEventListener("click", async function(){
+  var f = $("csvFile").files[0];
+  if(!f){ $("importMsg").innerHTML = '<div class="msg err">Please choose a CSV file first.</div>'; return; }
+  var text = await fileToCsvText(f);
+  try{
+    if(serverMode){
+      var r = await api("/api/admin/import","POST",{csv:text});
+      await reloadFromServer();
+      $("importMsg").innerHTML = '<div class="msg '+(r.added?"ok":"err")+'">Imported '+r.added+' classes. Skipped '+r.skipped+'.'+(r.errors&&r.errors.length? "<br>"+r.errors.map(esc).join("<br>"):"")+'</div>';
+    } else {
+      // Standalone mode: same rules as the server importer
+      var rows = parseCsvClient(text);
+      if(rows.length<2){ $("importMsg").innerHTML = '<div class="msg err">No data rows found. The first row must be the column headings.</div>'; return; }
+      var head = rows[0].map(function(h){ return String(h).trim().toLowerCase(); });
+      function idx(names){ for(var k=0;k<names.length;k++){ var j=head.indexOf(names[k]); if(j>=0) return j; } return -1; }
+      var ci = { program:idx(["program","degree program","degree","programme"]), semester:idx(["semester","sem"]), section:idx(["section"]), day:idx(["day"]), start:idx(["start","start time","from","time from"]), end:idx(["end","end time","to","time to"]), time:idx(["time","timing","class time"]), subject:idx(["subject","course","course name"]), teacher:idx(["teacher","instructor","faculty"]), room:idx(["classroom","room","venue"]) };
+      var added=0, skipped=0, errs=[];
+      for(var r2=1;r2<rows.length;r2++){
+        var row=rows[r2];
+        function get(i){ return i>=0 && row[i]!==undefined ? String(row[i]).trim() : ""; }
+        var start=get(ci.start), end=get(ci.end);
+        if(!start && ci.time>=0){ var parts=get(ci.time).split(/[-–—]/).map(function(x){ return x.trim(); }); start=parts[0]||""; end=parts[1]||""; }
+        var e = { id:"e"+Date.now().toString(36)+r2, program:get(ci.program), semester:get(ci.semester).replace(/[^0-9]/g,""), section:get(ci.section), day:get(ci.day), start:start, end:end, subject:get(ci.subject), teacher:get(ci.teacher), room:get(ci.room) };
+        var dm = DAYS.find(function(d){ return d.toLowerCase()===e.day.toLowerCase() || d.slice(0,3).toLowerCase()===e.day.toLowerCase(); });
+        if(dm) e.day = dm;
+        if(!e.program || !e.semester || !e.day || !e.start || !e.subject){ skipped++; errs.push("Row "+(r2+1)+": missing Program, Semester, Day, Start time or Subject — skipped."); continue; }
+        var prog = db.programs.find(function(p){ return p.name.toLowerCase()===e.program.toLowerCase(); });
+        if(prog) e.program = prog.name;
+        db.entries.push(e); added++;
+      }
+      saveLocal(); refreshAfterChange();
+      $("importMsg").innerHTML = '<div class="msg '+(added?"ok":"err")+'">Imported '+added+' classes. Skipped '+skipped+'.'+(errs.length? "<br>"+errs.slice(0,20).map(esc).join("<br>"):"")+'</div>';
+    }
+  }catch(e){ $("importMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+});
+
+/* ---------- Students (admin) ---------- */
+var teacherListCache = [];
+function teacherSay(txt, ok){ var m = $("teacherMsg"); m.innerHTML = txt; m.className = "msg " + (ok ? "ok" : "err"); }
+function renderTeachers(){
+  var recs = (db.teacherRecords || []).slice().sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+  var recNames = {}; recs.forEach(function(r){ recNames[String(r.name).toLowerCase()] = true; });
+  var extra = [];
+  (db.entries || []).forEach(function(e){ if(e.teacher && !recNames[String(e.teacher).toLowerCase()] && extra.indexOf(e.teacher) < 0) extra.push(e.teacher); });
+  extra.sort(function(a,b){ return String(a).localeCompare(String(b)); });
+  teacherListCache = recs.map(function(r){ return { rec: r }; }).concat(extra.map(function(n){ return { nameOnly: n }; }));
+  $("teacherCount").textContent = recs.length ? (recs.length + " teacher" + (recs.length===1?"":"s") + " with details saved.") : "No teachers yet — add the first teacher above.";
+  $("adminTeachers").innerHTML = teacherListCache.map(function(it, i){
+    var name = it.rec ? it.rec.name : it.nameOnly;
+    var n = (db.entries || []).filter(function(e){ return e.teacher === name; }).length;
+    if(it.rec) return '<tr><td>'+esc(it.rec.name)+'</td><td>'+esc(it.rec.designation||"—")+'</td><td>'+esc(it.rec.email||"—")+'</td><td>'+n+'</td><td style="white-space:nowrap"><button class="btn light small" data-tedit="'+i+'">Edit</button> <button class="btn danger small" data-tdel="'+i+'">Delete</button></td></tr>';
+    return '<tr><td>'+esc(name)+'</td><td colspan="2" style="color:var(--muted)">Details not added yet (name came from a class)</td><td>'+n+'</td><td style="white-space:nowrap"><button class="btn light small" data-tfill="'+i+'">Add Details</button></td></tr>';
+  }).join("");
+  Array.prototype.forEach.call(document.querySelectorAll("[data-tedit]"), function(b){ b.addEventListener("click", function(){ var it = teacherListCache[+b.getAttribute("data-tedit")]; if(it && it.rec) startEditTeacher(it.rec.id); }); });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-tdel]"), function(b){ b.addEventListener("click", function(){ var it = teacherListCache[+b.getAttribute("data-tdel")]; if(it && it.rec) delTeacher(it.rec.id); }); });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-tfill]"), function(b){ b.addEventListener("click", function(){ var it = teacherListCache[+b.getAttribute("data-tfill")]; if(it){ cancelTeacherEdit(); $("tchName").value = it.nameOnly; $("tchName").focus(); window.scrollTo({top:0, behavior:"smooth"}); teacherSay("Name filled from the class — add any details you have, then press Add Teacher.", true); } }); });
+}
+function startEditTeacher(id){
+  var r = (db.teacherRecords || []).find(function(x){ return x.id===id; }); if(!r) return;
+  $("tchId").value = r.id; $("tchName").value = r.name||""; $("tchDesignation").value = r.designation||""; $("tchEmail").value = r.email||"";
+  $("saveTeacherBtn").textContent = "Save Changes"; $("cancelTeacherEditBtn").classList.remove("hidden");
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function cancelTeacherEdit(){ $("teacherAdminForm").reset(); $("tchId").value=""; $("saveTeacherBtn").textContent = "Add Teacher"; $("cancelTeacherEditBtn").classList.add("hidden"); }
+$("cancelTeacherEditBtn").addEventListener("click", cancelTeacherEdit);
+async function refreshTeacherViews(){ catalogFromEntries(); fillDatalists(); fillTeacherSelect(); renderTeachers(); }
+async function delTeacher(id){
+  var r = (db.teacherRecords || []).find(function(x){ return x.id===id; }); if(!r) return;
+  if(!confirm("Delete teacher \"" + r.name + "\"? Their classes are not deleted.")) return;
+  try{
+    if(serverMode){ await api("/api/admin/teacher-records/" + encodeURIComponent(id), "DELETE"); await reloadFromServer(); await loadAdminData(); }
+    else {
+      var n = (db.entries || []).filter(function(e){ return e.teacher === r.name; }).length;
+      if(n > 0) throw new Error("This teacher has " + n + " class(es) in the timetable. Change those classes first, then delete.");
+      db.teacherRecords = db.teacherRecords.filter(function(x){ return x.id!==id; });
+      if(!(db.entries || []).some(function(e){ return e.teacher === r.name; })) db.teachers = (db.teachers || []).filter(function(x){ return x !== r.name; });
+      saveLocal();
+    }
+    if($("tchId").value === id) cancelTeacherEdit();
+    refreshTeacherViews(); teacherSay("Teacher deleted.", true);
+  }catch(e){ teacherSay(esc(e.message), false); }
+}
+$("teacherAdminForm").addEventListener("submit", async function(ev){
+  ev.preventDefault();
+  var id = $("tchId").value;
+  var tr = { name: $("tchName").value.trim(), designation: $("tchDesignation").value.trim(), email: $("tchEmail").value.trim() };
+  if(!tr.name){ teacherSay("Teacher Name is required.", false); return; }
+  try{
+    if(serverMode){
+      if(id) await api("/api/admin/teacher-records/" + encodeURIComponent(id), "PUT", tr);
+      else await api("/api/admin/teacher-records", "POST", tr);
+      await reloadFromServer(); await loadAdminData();
+    } else {
+      if((db.teacherRecords || []).some(function(x){ return x.id !== id && x.name.toLowerCase() === tr.name.toLowerCase(); })) throw new Error("A teacher with this name already exists.");
+      db.teacherRecords = db.teacherRecords || [];
+      if(id){
+        var i = db.teacherRecords.findIndex(function(x){ return x.id===id; }); if(i < 0) throw new Error("Teacher not found.");
+        var oldName = db.teacherRecords[i].name;
+        db.teacherRecords[i] = Object.assign({}, db.teacherRecords[i], tr);
+        if(oldName !== tr.name){
+          db.teachers = (db.teachers || []).map(function(x){ return x === oldName ? tr.name : x; });
+          if((db.teachers || []).indexOf(tr.name) < 0) db.teachers.push(tr.name);
+          (db.entries || []).forEach(function(e){ if(e.teacher === oldName) e.teacher = tr.name; });
+        }
+      } else {
+        db.teacherRecords.push(Object.assign({ id: "t" + Date.now().toString(36) }, tr));
+        db.teachers = db.teachers || []; if(db.teachers.indexOf(tr.name) < 0) db.teachers.push(tr.name);
+      }
+      saveLocal();
+    }
+    cancelTeacherEdit();
+    refreshTeacherViews(); teacherSay(id ? "Teacher updated." : "Teacher added with details.", true);
+  }catch(e){ teacherSay(esc(e.message), false); }
+});
+/* ---------- Teacher view ---------- */
+function fillTeacherSelect(){
+  var cur = $("tTeacher").value;
+  $("tTeacher").innerHTML = '<option value="">— Select Teacher —</option>' + (db.teachers || []).slice().sort().map(function(t){ return '<option>'+esc(t)+'</option>'; }).join("");
+  if(cur) $("tTeacher").value = cur;
+}
+function tSelectedDayCount(){ return Object.keys(tSelectedDays).length; }
+function tSelectedDayList(){ return DAYS.filter(function(d){ return tSelectedDays[d]; }); }
+function buildTDayChips(){
+  var html = DAYS.map(function(d){ return '<button type="button" class="day-chip" data-tday="'+d+'">'+d+'</button>'; }).join("");
+  html += '<button type="button" class="day-chip" id="tChipAll">All Week</button>';
+  $("tDayChips").innerHTML = html;
+  Array.prototype.forEach.call($("tDayChips").querySelectorAll("[data-tday]"), function(b){
+    b.addEventListener("click", function(){
+      var d = b.getAttribute("data-tday");
+      if(tSelectedDays[d]) delete tSelectedDays[d]; else tSelectedDays[d] = true;
+      syncTChipStates();
+    });
+  });
+  $("tChipAll").addEventListener("click", function(){
+    if(tSelectedDayCount() === DAYS.length){ tSelectedDays = {}; }
+    else { DAYS.forEach(function(d){ tSelectedDays[d] = true; }); }
+    syncTChipStates();
+  });
+  syncTChipStates();
+}
+function syncTChipStates(){
+  Array.prototype.forEach.call($("tDayChips").querySelectorAll("[data-tday]"), function(b){
+    b.classList.toggle("on", !!tSelectedDays[b.getAttribute("data-tday")]);
+  });
+  var all = $("tChipAll"); if(all) all.classList.toggle("on", tSelectedDayCount() === DAYS.length);
+}
+$("tabStudent").addEventListener("click", function(){
+  currentView = "student";
+  $("filterForm").classList.remove("hidden"); $("teacherForm").classList.add("hidden");
+  $("tabStudent").className = "btn"; $("tabTeacher").className = "btn light";
+  showPromptState();
+});
+$("tabTeacher").addEventListener("click", function(){
+  currentView = "teacher";
+  $("teacherForm").classList.remove("hidden"); $("filterForm").classList.add("hidden");
+  $("tabTeacher").className = "btn"; $("tabStudent").className = "btn light";
+  if(!(db.teachers || []).length){
+    currentResults = []; currentTitle = "";
+    $("results").innerHTML = '<div class="empty"><strong>No teachers yet</strong>Teachers appear here once the admin adds them in the Teachers section of the admin panel.</div>';
+  } else showPromptState();
+});
+function renderTeacherResults(list, title, metaChips){
+  currentView = "teacher";
+  currentResults = sortEntries(list); currentTitle = title;
+  if(!currentResults.length){
+    $("results").innerHTML = '<div class="empty"><strong>No classes found</strong>This teacher has no classes for the selected days.</div>';
+    return;
+  }
+  var html = DEPT_HTML + '<div class="result-meta"><strong>'+esc(title)+'</strong>' + (metaChips||"") + '<span class="chip">'+currentResults.length+' class'+(currentResults.length===1?"":"es")+'</span></div>';
+  html += '<div class="table-wrap"><table class="rtable"><thead><tr><th>Day</th><th>Subject</th><th>Class</th><th>Classroom</th><th>Time</th></tr></thead><tbody>';
+  var lastDay = null, groupByDay = currentResults.some(function(e){ return e.day !== currentResults[0].day; }) || tSelectedDayCount() !== 1;
+  currentResults.forEach(function(e){
+    if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
+    var cls = (e.program||"") + " — Sem " + (e.semester||"") + (e.section ? " Sec " + e.section : "");
+    var st2 = entryStatusToday(e);
+    html += '<tr class="'+(st2 === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st2)+combinedBadge(e)+extraBadge(e)+(st2 === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Class">'+esc(cls)+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  $("results").innerHTML = html;
+}
+function applyTeacherFilters(full){
+  var teacher = $("tTeacher").value;
+  if(!teacher){
+    $("results").innerHTML = '<div class="empty"><strong>Please select a teacher first</strong>Choose a teacher name above, then press Show My Classes.</div>';
+    return;
+  }
+  var dayList = tSelectedDayList();
+  var list = db.entries.filter(function(e){
+    if(e.teacher !== teacher) return false;
+    if(!extraVisible(e)) return false;
+    if(!full && dayList.length && dayList.indexOf(e.day) < 0) return false;
+    return true;
+  });
+  var chips = '<span class="chip">'+esc(teacher)+'</span>';
+  if(!full && dayList.length && dayList.length < DAYS.length) chips += '<span class="chip">'+esc(dayList.join(", "))+'</span>';
+  if(dayList.length === DAYS.length) chips += '<span class="chip">All Week</span>';
+  renderTeacherResults(list, full ? "Teacher Timetable — Full Week" : "Teacher Timetable", chips);
+  if(!full) saveFilters();
+}
+$("teacherForm").addEventListener("submit", function(ev){ ev.preventDefault(); applyTeacherFilters(false); });
+$("tFullBtn").addEventListener("click", function(){ applyTeacherFilters(true); });
+$("tClearBtn").addEventListener("click", function(){
+  $("tTeacher").value = ""; tSelectedDays = {}; syncTChipStates(); showPromptState();
+});
+
+/* ---------- Remember filters ---------- */
+function saveFilters(){
+  try{
+    localStorage.setItem(FILTERS_LS, JSON.stringify({
+      program: $("fProgram").value, semester: $("fSemester").value, section: $("fSection").value,
+      days: selectedDayList(), teacher: $("tTeacher").value, tDays: tSelectedDayList()
+    }));
+  }catch(e){}
+}
+function restoreFilters(){
+  var s = null;
+  try{ s = JSON.parse(localStorage.getItem(FILTERS_LS) || "null"); }catch(e){}
+  if(!s) return;
+  if(s.teacher) $("tTeacher").value = s.teacher;
+  (s.tDays || []).forEach(function(d){ if(DAYS.indexOf(d) >= 0) tSelectedDays[d] = true; });
+  syncTChipStates();
+  if(s.program){
+    $("fProgram").value = s.program;
+    if(s.semester) $("fSemester").value = s.semester;
+    if(s.section) $("fSection").value = s.section;
+    (s.days || []).forEach(function(d){ if(DAYS.indexOf(d) >= 0) selectedDays[d] = true; });
+    syncChipStates();
+    applyFilters(false);
+  }
+}
+
+/* ---------- Local (standalone) class alerts ---------- */
+/* ---------- Data backup / restore ---------- */
+function downloadBlob(name, text){
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type:"application/json"}));
+  a.download = name; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
+}
+$("backupBtn").addEventListener("click", function(){
+  if(serverMode){
+    var a = document.createElement("a"); a.href = "/api/admin/backup"; a.click();
+    $("backupMsg").innerHTML = '<div class="msg ok">Backup download started. Keep the file safe — it contains student data.</div>';
+  } else {
+    var payload = { app:"kiu-media-timetable", version:1, exportedAt:new Date().toISOString(), db:db,
+      local:{ pw:(function(){ try{ return localStorage.getItem(PW_LS_KEY); }catch(e){ return null; } })(),
+              rec:(function(){ try{ return localStorage.getItem(REC_LS_KEY); }catch(e){ return null; } })(),
+              file:localFile(), sheets:localSheets(), filters:(function(){ try{ return localStorage.getItem(FILTERS_LS); }catch(e){ return null; } })() } };
+    downloadBlob("kiu-media-backup-" + new Date().toISOString().slice(0,10) + ".json", JSON.stringify(payload, null, 2));
+    $("backupMsg").innerHTML = '<div class="msg ok">Backup downloaded. Keep the file safe — it contains student data.</div>';
+  }
+});
+$("restoreBtn").addEventListener("click", async function(){
+  var f = $("restoreFile").files[0];
+  if(!f){ $("backupMsg").innerHTML = '<div class="msg err">Please choose a backup file first.</div>'; return; }
+  if(!confirm("Restore this backup? It will REPLACE all current timetable data, students and settings.")) return;
+  try{
+    var payload = JSON.parse(await f.text());
+    if(!payload || !payload.db || !Array.isArray(payload.db.programs) || !Array.isArray(payload.db.entries)) throw new Error("This does not look like a KIU Media Timetable backup file.");
+    if(serverMode){
+      await api("/api/admin/restore", "POST", payload);
+      $("backupMsg").innerHTML = '<div class="msg ok">Backup restored. Reloading...</div>';
+      setTimeout(function(){ location.reload(); }, 800);
+    } else {
+      db = payload.db;
+      if(!db.sheets && !payload.local) db.sheets = [];
+      saveLocal();
+      var L = payload.local || {};
+      if(L.pw) localStorage.setItem(PW_LS_KEY, L.pw); if(L.rec) localStorage.setItem(REC_LS_KEY, L.rec); 
+      if(L.file) localStorage.setItem(FILE_LS_KEY, JSON.stringify(L.file));
+      if(L.sheets) localStorage.setItem(SHEETS_LS_KEY, JSON.stringify(L.sheets));
+      $("backupMsg").innerHTML = '<div class="msg ok">Backup restored. Reloading...</div>';
+      setTimeout(function(){ location.reload(); }, 800);
+    }
+  }catch(e){ $("backupMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+});
+
+/* ---------- Sheet upload: Excel / PDF auto-read + pending sheets ---------- */
+var SHEETS_LS_KEY = "kiu_media_sheets_v1";
+var lastSheetFile = null;
+function loadScriptOnce(src){
+  return new Promise(function(res, rej){
+    var s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = function(){ rej(new Error("Could not load a helper library. Check your internet connection.")); };
+    document.head.appendChild(s);
+  });
+}
+async function fileToCsvText(file){
+  var name = (file.name || "").toLowerCase();
+  if(name.endsWith(".xlsx") || name.endsWith(".xls")){
+    if(!window.XLSX) await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+    var buf = await file.arrayBuffer();
+    var wb = window.XLSX.read(buf, {type:"array"});
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    return window.XLSX.utils.sheet_to_csv(ws);
+  }
+  return file.text();
+}
+async function extractPdfText(file){
+  if(!window.pdfjsLib) await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  var buf = await file.arrayBuffer();
+  var doc = await window.pdfjsLib.getDocument({data:buf}).promise;
+  var out = [];
+  for(var pno=1; pno<=doc.numPages; pno++){
+    var page = await doc.getPage(pno);
+    var tc = await page.getTextContent();
+    var lines = {};
+    tc.items.forEach(function(it){ var y = Math.round(it.transform[5]); (lines[y] = lines[y] || []).push({x: it.transform[4], str: it.str}); });
+    Object.keys(lines).sort(function(a,b){ return Number(b)-Number(a); }).forEach(function(y){
+      out.push(lines[y].sort(function(a,b){ return a.x-b.x; }).map(function(o){ return o.str; }).join(", "));
+    });
+  }
+  return out.join("\n");
+}
+function sheetSay(html, ok){ $("sheetMsg").innerHTML = html ? '<div class="msg '+(ok?"ok":"err")+'">'+html+'</div>' : ""; }
+function localSheets(){ try{ return JSON.parse(localStorage.getItem(SHEETS_LS_KEY) || "[]"); }catch(e){ return []; } }
+function sheetsNow(){ return serverMode ? (db.sheets || []) : localSheets(); }
+function renderPendingSheets(){
+  var list = sheetsNow();
+  $("pendingSheets").innerHTML = list.length ? list.map(function(s){
+    return '<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><span style="flex:1">'+esc(s.name)+' <span class="hint">('+esc(String(s.uploadedAt||"").slice(0,10))+')</span></span><span class="chip">'+esc(s.status||"pending")+'</span><button class="btn light small" data-sheetdl="'+esc(s.id)+'">Download</button><button class="btn danger small" data-sheetdel="'+esc(s.id)+'">Delete</button></div>';
+  }).join("") : '<p class="hint">No pending sheets. Handwritten / photo sheets you save will appear here.</p>';
+  Array.prototype.forEach.call(document.querySelectorAll("[data-sheetdl]"), function(b){ b.addEventListener("click", function(){ downloadSheet(b.getAttribute("data-sheetdl")); }); });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-sheetdel]"), function(b){ b.addEventListener("click", function(){ deleteSheet(b.getAttribute("data-sheetdel")); }); });
+}
+function downloadSheet(id){
+  if(serverMode){
+    var a = document.createElement("a"); a.href = "/api/admin/sheets/"+encodeURIComponent(id)+"/file"; a.target = "_blank"; a.click();
+  } else {
+    var s = localSheets().find(function(x){ return x.id===id; });
+    if(s && s.dataUrl){ var a2 = document.createElement("a"); a2.href = s.dataUrl; a2.download = s.name; a2.click(); }
+  }
+}
+async function deleteSheet(id){
+  if(!confirm("Delete this pending sheet?")) return;
+  try{
+    if(serverMode){ await api("/api/admin/sheets/"+encodeURIComponent(id), "DELETE"); db.sheets = (db.sheets||[]).filter(function(x){ return x.id!==id; }); }
+    else { localStorage.setItem(SHEETS_LS_KEY, JSON.stringify(localSheets().filter(function(x){ return x.id!==id; }))); }
+    renderPendingSheets(); sheetSay("Sheet deleted.", true);
+  }catch(e){ sheetSay(esc(e.message), false); }
+}
+async function saveSheetPending(file){
+  if(!file){ sheetSay("Please choose a sheet file first.", false); return; }
+  var dataUrl = await new Promise(function(res, rej){ var r = new FileReader(); r.onload = function(){ res(r.result); }; r.onerror = rej; r.readAsDataURL(file); });
+  try{
+    if(serverMode){
+      var b64 = String(dataUrl).split(",")[1];
+      var r = await api("/api/admin/sheets","POST",{name:file.name, type:file.type, data:b64});
+      if(!db.sheets) db.sheets = [];
+      db.sheets.unshift(r.sheet);
+    } else {
+      if(String(dataUrl).length > 3500000){ sheetSay("This sheet is too big for the standalone HTML file. Please use the server version, or send the sheet to Muse in chat directly.", false); return; }
+      var list = localSheets();
+      list.unshift({ id:"sh"+Date.now().toString(36), name:file.name, type:file.type, size:file.size, uploadedAt:new Date().toISOString(), status:"pending", dataUrl:dataUrl });
+      localStorage.setItem(SHEETS_LS_KEY, JSON.stringify(list));
+    }
+    renderPendingSheets();
+    sheetSay("Sheet saved under Pending Sheets. Now send the same sheet to Muse in chat — it will be read, adjusted and returned as a ready-to-import file.", true);
+  }catch(e){ sheetSay(esc(e.message), false); }
+}
+$("readSheetBtn").addEventListener("click", async function(){
+  var f = $("sheetFile").files[0];
+  if(!f){ sheetSay("Please choose a sheet file first.", false); return; }
+  lastSheetFile = f;
+  var name = (f.name || "").toLowerCase();
+  sheetSay("Reading sheet...", true);
+  try{
+    if(name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".csv")){
+      var csv = await fileToCsvText(f);
+      $("sheetPreview").value = csv;
+      sheetSay("Sheet read. Check the rows in the preview, adjust anything wrong, then import as Timetable or as Students.", true);
+    } else if(name.endsWith(".pdf") || f.type === "application/pdf"){
+      var text = "";
+      try { text = await extractPdfText(f); } catch(e) { text = ""; }
+      if(text && text.replace(/[^a-zA-Z0-9]/g,"").length > 30){
+        $("sheetPreview").value = text;
+        sheetSay("Text read from the PDF. If the rows look broken (grid-style timetable), adjust them in the preview — or save the sheet as Pending and send it to Muse in chat for exact reading.", true);
+      } else {
+        await saveSheetPending(f);
+      }
+    } else if((f.type || "").indexOf("image/") === 0){
+      await saveSheetPending(f);
+    } else {
+      sheetSay("This file type is not supported. Use Excel, CSV, PDF or an image.", false);
+    }
+  }catch(e){ sheetSay(esc(e.message), false); }
+});
+$("sheetSavePendingBtn").addEventListener("click", function(){ saveSheetPending(lastSheetFile || $("sheetFile").files[0]); });
+function importPreviewAs(){
+  var text = $("sheetPreview").value;
+  if(!text || !text.trim()){ sheetSay("The preview is empty. Read a sheet first.", false); return; }
+  var file = new File([text], "sheet-preview.csv", {type:"text/csv"});
+  var dt = new DataTransfer(); dt.items.add(file);
+  $("csvFile").files = dt.files; $("importBtn").click(); $("importMsg").scrollIntoView({behavior:"smooth", block:"center"});
+}
+$("sheetImportTimetableBtn").addEventListener("click", function(){ importPreviewAs(); });
+
+/* ---------- Forgot password / change password / recovery key ---------- */
+$("forgotToggle").addEventListener("click", function(){ $("forgotBox").classList.toggle("hidden"); });
+$("forgotForm").addEventListener("submit", async function(ev){
+  ev.preventDefault();
+  var key = $("recKey").value, newPw = $("newPwForgot").value;
+  try{
+    if(serverMode){
+      await api("/api/admin/forgot-password","POST",{recoveryKey:key, newPassword:newPw});
+    } else {
+      if(key !== localRecovery()) throw new Error("Incorrect recovery key.");
+      localStorage.setItem(PW_LS_KEY, newPw);
+    }
+    $("forgotMsg").innerHTML = '<div class="msg ok">Password reset successfully. You can now login with your new password.</div>';
+    $("forgotForm").reset();
+  }catch(e){ $("forgotMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+});
+$("pwForm").addEventListener("submit", async function(ev){
+  ev.preventDefault();
+  var cur = $("curPw").value, nw = $("newPw").value;
+  try{
+    if(serverMode){
+      await api("/api/admin/change-password","POST",{currentPassword:cur, newPassword:nw});
+    } else {
+      if(cur !== localPassword()) throw new Error("Current password is incorrect.");
+      localStorage.setItem(PW_LS_KEY, nw);
+    }
+    $("pwMsg").innerHTML = '<div class="msg ok">Password changed. Use the new password from your next login.</div>';
+    $("curPw").value=""; $("newPw").value="";
+  }catch(e){ $("pwMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+});
+$("setRecBtn").addEventListener("click", async function(){
+  var key = $("recKeySet").value.trim();
+  if(key.length < 6){ $("pwMsg").innerHTML = '<div class="msg err">Recovery key must be at least 6 characters.</div>'; return; }
+  try{
+    if(serverMode){ await api("/api/admin/set-recovery","POST",{recoveryKey:key}); }
+    else { localStorage.setItem(REC_LS_KEY, key); }
+    $("recKeySet").value="";
+    $("pwMsg").innerHTML = '<div class="msg ok">Recovery key saved. Keep it somewhere safe and private.</div>';
+  }catch(e){ $("pwMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+});
+
+/* ---------- Official timetable file (PDF / image) ---------- */
+function dataUrlToBlobUrl(dataUrl){
+  var parts = dataUrl.split(",");
+  var mime = (parts[0].match(/:(.*?);/) || [])[1] || "application/octet-stream";
+  var bstr = atob(parts[1]), u8 = new Uint8Array(bstr.length);
+  for(var i=0;i<bstr.length;i++) u8[i] = bstr.charCodeAt(i);
+  return URL.createObjectURL(new Blob([u8], {type:mime}));
+}
+function openFile(newTab){
+  if(serverMode){ window.open("/api/timetable-file","_blank"); return; }
+  var f = localFile(); if(!f) return;
+  var url = dataUrlToBlobUrl(f.dataUrl);
+  if(newTab){ window.open(url,"_blank"); }
+  else { var a=document.createElement("a"); a.href=url; a.download=f.name||"timetable"; a.click(); }
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+}
+$("fileViewBtn").addEventListener("click", function(){ openFile(true); });
+$("fileDownloadBtn").addEventListener("click", function(){
+  if(serverMode){
+    var a=document.createElement("a"); a.href="/api/timetable-file"; a.download=(db.fileMeta&&db.fileMeta.name)||"timetable"; a.click();
+  } else openFile(false);
+});
+$("uploadFileBtn").addEventListener("click", async function(){
+  var f = $("ttFile").files[0];
+  if(!f){ $("fileMsg").innerHTML = '<div class="msg err">Please choose a PDF or image file first.</div>'; return; }
+  if(f.size > 8*1024*1024){ $("fileMsg").innerHTML = '<div class="msg err">File is too large (max 8 MB).</div>'; return; }
+  var dataUrl = await new Promise(function(res, rej){ var r=new FileReader(); r.onload=function(){ res(r.result); }; r.onerror=rej; r.readAsDataURL(f); });
+  try{
+    if(serverMode){
+      var b64 = String(dataUrl).split(",")[1];
+      var r = await api("/api/admin/upload-file","POST",{name:f.name, type:f.type, data:b64});
+      db.fileMeta = r.fileMeta;
+    } else {
+      if(String(dataUrl).length > 4500000){ $("fileMsg").innerHTML = '<div class="msg err">This file is too big for the standalone HTML file (about 3 MB max here). Use the server version for bigger files.</div>'; return; }
+      localStorage.setItem(FILE_LS_KEY, JSON.stringify({name:f.name, type:f.type, dataUrl:dataUrl, uploadedAt:new Date().toISOString()}));
+    }
+    renderFileCard(); renderFileAdmin();
+    $("fileMsg").innerHTML = '<div class="msg ok">File uploaded. Students can now view and download it from the student page.</div>';
+  }catch(e){ $("fileMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+});
+$("removeFileBtn").addEventListener("click", async function(){
+  if(!confirm("Remove the uploaded timetable file? Students will no longer see it.")) return;
+  try{
+    if(serverMode){ await api("/api/admin/upload-file","DELETE"); db.fileMeta = null; }
+    else { localStorage.removeItem(FILE_LS_KEY); }
+    renderFileCard(); renderFileAdmin();
+    $("fileMsg").innerHTML = '<div class="msg ok">File removed.</div>';
+  }catch(e){ $("fileMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+});
+
+init();
+})();
+</script>
+</body>
+</html>
