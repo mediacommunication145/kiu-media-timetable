@@ -658,7 +658,7 @@ function catalogFromEntries(){
 }
 
 async function api(path, method, body){
-  var res = await fetch(path, { method: method||"GET", headers:{"Content-Type":"application/json"}, body: body?JSON.stringify(body):undefined });
+  var res = await fetch(path, { method: method||"GET", cache: "no-store", headers:{"Content-Type":"application/json"}, body: body?JSON.stringify(body):undefined });
   var data = {}; try{ data = await res.json(); }catch(e){}
   if(!res.ok) throw new Error(data.error || ("Request failed ("+res.status+")"));
   return data;
@@ -967,7 +967,8 @@ function renderSheetGrid(list, title){
   html += '</tbody></table></div>';
   $("results").innerHTML = html;
 }
-$("sheetBtn").addEventListener("click", function(){
+$("sheetBtn").addEventListener("click", async function(){
+  if(serverMode){ try{ await reloadFromServer(); }catch(e){} }
   var program = $("fProgram").value, sem = $("fSemester").value, sec = $("fSection").value;
   var list = db.entries.filter(function(e){
     if(program && e.program !== program) return false;
@@ -1005,8 +1006,8 @@ function applyFilters(full){
   if(!full) saveFilters();
 }
 
-$("filterForm").addEventListener("submit", function(ev){ ev.preventDefault(); applyFilters(false); });
-$("fullBtn").addEventListener("click", function(){ applyFilters(true); });
+$("filterForm").addEventListener("submit", async function(ev){ ev.preventDefault(); if(serverMode){ try{ await reloadFromServer(); }catch(e){} } applyFilters(false); });
+$("fullBtn").addEventListener("click", async function(){ if(serverMode){ try{ await reloadFromServer(); }catch(e){} } applyFilters(true); });
 $("clearBtn").addEventListener("click", function(){
   $("fProgram").value=""; $("fSemester").value=""; $("fSection").value="";
   selectedDays = {}; syncChipStates();
@@ -1584,7 +1585,7 @@ function applyTeacherFilters(full){
   renderTeacherResults(list, full ? "Teacher Timetable — Full Week" : "Teacher Timetable", chips);
   if(!full) saveFilters();
 }
-$("teacherForm").addEventListener("submit", function(ev){ ev.preventDefault(); applyTeacherFilters(false); });
+$("teacherForm").addEventListener("submit", async function(ev){ ev.preventDefault(); if(serverMode){ try{ await reloadFromServer(); }catch(e){} } applyTeacherFilters(false); });
 $("tFullBtn").addEventListener("click", function(){ applyTeacherFilters(true); });
 $("tClearBtn").addEventListener("click", function(){
   $("tTeacher").value = ""; tSelectedDays = {}; syncTChipStates(); showPromptState();
