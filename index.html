@@ -148,6 +148,13 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
   .card{border:none;box-shadow:none;padding:0}
   table{min-width:0}
 }
+.chooser-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+@media(max-width:560px){.chooser-grid{grid-template-columns:1fr}}
+.chooser-btn{appearance:none;border:2px solid #dbe4f0;border-radius:16px;background:linear-gradient(180deg,#f4f8ff,#ffffff);padding:26px 14px;cursor:pointer;font:inherit;transition:border-color .15s ease, transform .15s ease, box-shadow .15s ease}
+.chooser-btn:hover{border-color:#c9a227;transform:translateY(-2px);box-shadow:0 8px 20px rgba(27,58,95,.12)}
+.chooser-emoji{font-size:46px;display:block;line-height:1.1}
+.chooser-title{font-size:21px;font-weight:700;color:#1b3a5f;display:block;margin-top:8px}
+.chooser-sub{color:#5a6b82;display:block;margin-top:3px;font-size:14px}
 </style>
 </head>
 <body>
@@ -175,7 +182,31 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
 <main>
   <!-- ============ STUDENT VIEW ============ -->
   <section id="studentView">
-    <div class="card">
+    <div class="card" id="portalChooser" style="text-align:center">
+      <h2>Welcome to the KIU Media Timetable</h2>
+      <p class="sub">Department of Media and Communication, Karakoram International University — please choose your side to continue.</p>
+      <div class="chooser-grid">
+        <button type="button" class="chooser-btn" id="chooseStudent">
+          <span class="chooser-emoji">🎓</span>
+          <span class="chooser-title">For Students</span>
+          <span class="chooser-sub">See your class timetable</span>
+        </button>
+        <button type="button" class="chooser-btn" id="chooseTeacher">
+          <span class="chooser-emoji">👩‍🏫</span>
+          <span class="chooser-title">For Teachers</span>
+          <span class="chooser-sub">See your teaching schedule</span>
+        </button>
+      </div>
+    </div>
+    <div class="card" id="appCard" style="border:2px solid #d9a441; background:#fffaf0">
+      <h2>📱 Get the Android App</h2>
+      <p class="sub">Install the <strong>KIU Media Timetable</strong> app on your Android phone — your timetable on your home screen, always up to date.</p>
+      <div class="actions" style="margin:0 0 8px">
+        <a class="btn gold" href="KIU-Media-Timetable.apk" download style="text-decoration:none">⬇ Install App</a>
+      </div>
+      <p class="hint">Android phones only. After downloading, open the file and tap <strong>Install</strong> — if your phone asks, allow installs from your browser once. iPhone users: this website works the same way in your browser.</p>
+    </div>
+    <div class="card hidden" id="portalCard">
       <h2>Check Students Timetable</h2>
       <p class="sub">This timetable is <strong>only for the Department of Media and Communication</strong>, Karakoram International University (KIU) — for its two programs: <strong>BS Media and Communication Studies (MC)</strong> and <strong>BS Digital Media and Marketing (DM)</strong>. If you are from another department, this timetable is not for you. Select your degree program, semester, section and day, then press <strong>Show Classes</strong>.</p>
       <div class="actions" style="margin:0 0 16px">
@@ -598,7 +629,7 @@ async function api(path, method, body){
 async function init(){
   var data = null;
   try{ data = await api("/api/timetable"); }catch(e){}
-  if(!(data && data.programs)){
+  if(!(data && data.programs) && (location.protocol === "http:" || location.protocol === "https:")){
     await new Promise(function(r){ setTimeout(r, 2500); });
     try{ data = await api("/api/timetable"); }catch(e){}
   }
@@ -975,7 +1006,7 @@ $("tPrintBtn").addEventListener("click", printCurrent);
 $("tPdfBtn").addEventListener("click", pdfCurrent);
 
 /* ---------- View switching ---------- */
-function showStudent(){ $("studentView").classList.remove("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("adminToggleBtn").textContent = "Admin Login"; }
+function showStudent(){ $("studentView").classList.remove("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("adminToggleBtn").textContent = "Admin Login"; applyPortalState(); }
 function showLogin(){ $("studentView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("loginView").classList.remove("hidden"); }
 function showAdmin(){ $("studentView").classList.add("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.remove("hidden"); $("adminToggleBtn").textContent = "Student View"; renderAdminGrid(); renderTeachers(); renderPendingSheets(); if(serverMode) loadAdminData(); }
 async function loadAdminData(){
@@ -1439,6 +1470,23 @@ function syncTChipStates(){
   });
   var all = $("tChipAll"); if(all) all.classList.toggle("on", tSelectedDayCount() === DAYS.length);
 }
+var portalChosen = null;
+function applyPortalState(){
+  var chosen = !!portalChosen;
+  var inApp = /KIUMediaApp/.test(navigator.userAgent);
+  if($("portalChooser")) $("portalChooser").classList.toggle("hidden", chosen);
+  if($("appCard")) $("appCard").classList.toggle("hidden", chosen || inApp);
+  if($("portalCard")) $("portalCard").classList.toggle("hidden", !chosen);
+  if($("resultsCard")) $("resultsCard").classList.toggle("hidden", !chosen);
+}
+function choosePortal(side){
+  portalChosen = side;
+  applyPortalState();
+  if(side === "teacher") $("tabTeacher").click(); else $("tabStudent").click();
+  var c = $("portalCard"); if(c) c.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("chooseStudent").addEventListener("click", function(){ choosePortal("student"); });
+$("chooseTeacher").addEventListener("click", function(){ choosePortal("teacher"); });
 $("tabStudent").addEventListener("click", function(){
   currentView = "student";
   $("filterForm").classList.remove("hidden"); $("teacherForm").classList.add("hidden");
