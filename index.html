@@ -557,7 +557,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
 
     <div class="card">
       <h2>Timetable Grid — Excel Style Editor</h2>
-      <p class="sub">The whole week in one sheet, like the printed timetable. Tap any class to edit it right here — subject, teacher, time — or tick today's <strong>Confirm</strong> / <strong>Cancel</strong>. Tap an empty box (<strong>+</strong>) to add a class in that slot. For a one-time <strong>Extra Class</strong> (e.g. a makeup class), tick <strong>Extra Class</strong> in the editor and pick its date — students will see it only in that week, with an EXTRA CLASS tag.</p>
+      <p class="sub">The whole week in one sheet, like the printed timetable. Tap any class to edit it right here — subject, teacher, time — or tick <strong>Confirm</strong> / <strong>Cancel</strong> — it applies to that class's next date. Tap an empty box (<strong>+</strong>) to add a class in that slot. For a one-time <strong>Extra Class</strong> (e.g. a makeup class), tick <strong>Extra Class</strong> in the editor and pick its date — students will see it only in that week, with an EXTRA CLASS tag.</p>
       <div id="gridMsg"></div>
       <div id="adminGrid"></div>
       <div id="cellEditor" class="hidden" style="margin-top:16px;border-top:2px solid var(--gold);padding-top:14px">
@@ -576,8 +576,8 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
           <div class="field"><label for="geRoom">Classroom</label><input id="geRoom" list="dlRooms" placeholder="e.g. Room 02"></div>
         </div>
         <div class="tickrow">
-          <label><input type="checkbox" id="geConfirmToday"> Confirm today's class (green)</label>
-          <label><input type="checkbox" id="geCancelToday"> Cancel today's class (red)</label>
+          <label><input type="checkbox" id="geConfirmToday"> Confirm this class (green)</label>
+          <label><input type="checkbox" id="geCancelToday"> Cancel this class (red)</label>
         </div>
         <div class="field" style="margin-top:10px"><label for="geReason">Reason for cancelling (optional — students see it on the website)</label><input id="geReason" placeholder="e.g. Teacher not available today"></div>
         <p class="hint" id="geTickHint"></p>
@@ -777,17 +777,35 @@ function showPromptState(){
     $("results").innerHTML = DEPT_HTML + '<div class="empty"><strong>Department of Media and Communication — KIU</strong>Select your program above to see your classes, then press Show Classes.</div>';
   }
 }
-function entryStatusToday(e){
+function occurrenceDate(e){
   var now = pktParts();
-  if(e.day !== now.day) return "";
-  if((db.cancellations || []).some(function(c){ return c.entryId === e.id && c.date === now.date; })) return "cancelled";
-  if((db.confirmations || []).some(function(c){ return c.entryId === e.id && c.date === now.date && c.status === "confirmed"; })) return "confirmed";
-  return "today";
+  if(e.date) return e.date;
+  var names = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var cur = names.indexOf(now.day), tgt = names.indexOf(e.day);
+  if(cur < 0 || tgt < 0) return now.date;
+  return addDaysStr(now.date, (tgt - cur + 7) % 7);
+}
+function statusRecord(e){
+  var date = occurrenceDate(e);
+  var c = (db.cancellations || []).find(function(x){ return x.entryId === e.id && x.date === date; });
+  if(c) return { status: "cancelled", date: date, reason: c.reason || "" };
+  var k = (db.confirmations || []).find(function(x){ return x.entryId === e.id && x.date === date && x.status === "confirmed"; });
+  if(k) return { status: "confirmed", date: date, reason: "" };
+  return null;
+}
+function entryStatusToday(e){
+  var rec = statusRecord(e);
+  if(rec) return rec.status;
+  return e.day === pktParts().day ? "today" : "";
 }
 function todayCancelReason(e){
-  var now = pktParts();
-  var c = (db.cancellations || []).find(function(x){ return x.entryId === e.id && x.date === now.date; });
-  return c ? (c.reason || "") : "";
+  var rec = statusRecord(e);
+  return rec && rec.status === "cancelled" ? rec.reason : "";
+}
+function statusDateTag(e){
+  var rec = statusRecord(e);
+  if(!rec || rec.date === pktParts().date) return "";
+  return ' <span class="hint">(' + esc(fmtDate(rec.date)) + ')</span>';
 }
 function statusBadge(st){
   if(st === "cancelled") return '<span class="badge bad">CANCELLED</span>';
@@ -898,7 +916,7 @@ function renderResults(list, title, metaChips){
   currentResults.forEach(function(e){
     if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
     var st = entryStatusToday(e);
-    html += '<tr class="'+(st === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st)+combinedBadge(e)+extraBadge(e)+(st === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Teacher">'+esc(e.teacher||"—")+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+    html += '<tr class="'+(st === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+(st === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Teacher">'+esc(e.teacher||"—")+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
   });
   html += '</tbody></table></div>';
   $("results").innerHTML = html;
@@ -956,7 +974,7 @@ function renderSheetGrid(list, title){
         html += '<div class="' + cls + '"><strong>' + esc(e.subject) + '</strong>'
           + '<span class="cell-meta">BS-' + esc(ordSem(e.semester)) + ' ' + esc(g.progs.length > 1 ? g.progs.join("/") : "Only " + g.progs[0]) + (e.section ? ' · Sec ' + esc(e.section) : '') + (e.room ? ' · ' + esc(e.room) : '') + '</span>'
           + (e.teacher ? '<span class="cell-teacher">' + esc(e.teacher) + '</span>' : '')
-          + statusBadge(st) + extraBadge(e)
+          + statusBadge(st) + statusDateTag(e) + extraBadge(e)
           + (st === "cancelled" && todayCancelReason(e) ? '<span class="hint" style="display:block">Reason: ' + esc(todayCancelReason(e)) + '</span>' : '')
           + '</div>';
       });
@@ -1034,7 +1052,7 @@ function pdfCurrent(){
   currentResults.forEach(function(e){
     if(y > 790){ doc.addPage(); y = 56; }
     doc.text(doc.splitTextToSize(e.day||"", 70), cols[0], y);
-    doc.text(doc.splitTextToSize((e.subject||"") + (entryStatusToday(e) === "cancelled" ? " (CANCELLED)" : ""), 155), cols[1], y);
+    doc.text(doc.splitTextToSize((e.subject||"") + (entryStatusToday(e) === "cancelled" ? " (CANCELLED" + (statusRecord(e) && statusRecord(e).date !== pktParts().date ? " " + fmtDate(statusRecord(e).date) : "") + ")" : ""), 155), cols[1], y);
     doc.text(doc.splitTextToSize(currentView === "teacher" ? ((e.program||"") + " Sem " + (e.semester||"")) : (e.teacher||"—"), 115), cols[2], y);
     doc.text(doc.splitTextToSize(e.room||"—", 85), cols[3], y);
     doc.text(doc.splitTextToSize(timeRange(e), 70), cols[4], y);
@@ -1094,27 +1112,27 @@ function siblingOf(e){
   return (db.entries || []).filter(function(x){ return x.day === e.day && x.start === e.start && x.subject === e.subject && (x.teacher || "") === (e.teacher || ""); });
 }
 function localCancelClass(entry, by, reason){
-  var now = pktParts();
+  var date = occurrenceDate(entry);
   db.cancellations = db.cancellations || [];
-  if(!db.cancellations.some(function(x){ return x.entryId === entry.id && x.date === now.date; }))
-    db.cancellations.unshift({ id:"x"+Date.now().toString(36), entryId: entry.id, date: now.date, by: by, reason: reason || "", at: new Date().toISOString() });
-  var conf = (db.confirmations || []).find(function(x){ return x.key === entry.id + ":" + now.date; });
+  if(!db.cancellations.some(function(x){ return x.entryId === entry.id && x.date === date; }))
+    db.cancellations.unshift({ id:"x"+Date.now().toString(36), entryId: entry.id, date: date, by: by, reason: reason || "", at: new Date().toISOString() });
+  var conf = (db.confirmations || []).find(function(x){ return x.key === entry.id + ":" + date; });
   if(conf){ conf.status = "cancelled"; conf.decidedBy = by; if(reason) conf.reason = reason; }
   saveLocal();
 }
 function localConfirmClass(entry, by){
-  var now = pktParts();
-  db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === entry.id && x.date === now.date); });
+  var date = occurrenceDate(entry);
+  db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === entry.id && x.date === date); });
   db.confirmations = db.confirmations || [];
-  var key = entry.id + ":" + now.date;
+  var key = entry.id + ":" + date;
   var conf = db.confirmations.find(function(x){ return x.key === key; });
-  if(!conf){ conf = { id:"c"+Date.now().toString(36)+Math.floor(Math.random()*999), key:key, entryId: entry.id, date: now.date, day: entry.day, subject: entry.subject, classTime: entry.start, room: entry.room, teacherName: entry.teacher || "", teacherId: "", status: "pending", decidedBy: "", at: new Date().toISOString() }; db.confirmations.unshift(conf); }
+  if(!conf){ conf = { id:"c"+Date.now().toString(36)+Math.floor(Math.random()*999), key:key, entryId: entry.id, date: date, day: entry.day, subject: entry.subject, classTime: entry.start, room: entry.room, teacherName: entry.teacher || "", teacherId: "", status: "pending", decidedBy: "", at: new Date().toISOString() }; db.confirmations.unshift(conf); }
   conf.status = "confirmed"; conf.decidedBy = by;
   saveLocal();
 }
 async function cancelEntryToday(id){
   var e = (db.entries || []).find(function(x){ return x.id === id; }); if(!e) return;
-  if(!confirm("Cancel TODAY's " + e.subject + " class? It will show RED (CANCELLED) on the website.")) return;
+  if(!confirm("Cancel " + e.subject + " class (" + e.day + ")? It will show RED (CANCELLED) on the website.")) return;
   var reason = prompt("Reason for cancelling (optional). Students will see this reason on the website next to the cancelled class:", "");
   if(reason === null) return;
   try{
@@ -1136,10 +1154,9 @@ async function uncancelEntryToday(id){
   try{
     if(serverMode){ await api("/api/admin/uncancel-class", "POST", { entryId: id }); await reloadFromServer(); await loadAdminData(); }
     else if(e) {
-      var now = pktParts();
       siblingOf(e).forEach(function(sib){
-        db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === sib.id && x.date === now.date); });
-        db.confirmations = (db.confirmations || []).filter(function(x){ return !(x.key === sib.id + ":" + now.date); });
+        db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === sib.id && x.date === occurrenceDate(sib)); });
+        db.confirmations = (db.confirmations || []).filter(function(x){ return !(x.key === sib.id + ":" + occurrenceDate(sib)); });
       });
       saveLocal();
     }
@@ -1217,9 +1234,12 @@ function openCellEditor(id, day, start, end){
   $("geCancelToday").checked = st === "cancelled";
   $("geReason").value = e ? todayCancelReason(e) : "";
   var classDay = e ? e.day : day;
-  $("geTickHint").textContent = classDay === now.day
-    ? "This class is TODAY: the ticks set its status on the website for today. Unticking both removes today's decision."
-    : "The Confirm / Cancel ticks apply only when the class day is today (" + now.day + ").";
+  var occD = e ? occurrenceDate(e) : "";
+  $("geTickHint").textContent = !e
+    ? "The Confirm / Cancel ticks set the saved class's status for its next date. Unticking both removes the decision."
+    : (occD === now.date
+      ? "This class is TODAY (" + fmtDate(occD) + "): the ticks set its status on the website. Unticking both removes the decision."
+      : "The ticks set this class's status for its next date — " + classDay + ", " + fmtDate(occD) + ". Students can see it on the website right away. Unticking both removes the decision.");
   $("geMsg").innerHTML = "";
   $("cellEditor").classList.remove("hidden");
   $("cellEditor").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -1256,7 +1276,7 @@ $("geSave").addEventListener("click", async function(){
     if($("geExtra").checked && !$("geDate").value){ $("geMsg").innerHTML = '<div class="msg err">Please pick the date for the extra class.</div>'; return; }
     var saved = await saveClassFor(base, $("geFor").value, id || null);
     var nowP = pktParts();
-    if(saved && saved.day === nowP.day){
+    if(saved){
       if(serverMode){
         if($("geCancelToday").checked) await api("/api/admin/cancel-class", "POST", { entryId: saved.id, reason: $("geReason").value.trim() });
         else if($("geConfirmToday").checked) await api("/api/admin/confirm-class", "POST", { entryId: saved.id });
@@ -1267,8 +1287,8 @@ $("geSave").addEventListener("click", async function(){
         if($("geCancelToday").checked) sibs.forEach(function(sib){ localCancelClass(sib, "admin", $("geReason").value.trim()); });
         else if($("geConfirmToday").checked) sibs.forEach(function(sib){ localConfirmClass(sib, "admin"); });
         else sibs.forEach(function(sib){
-          db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === sib.id && x.date === nowP.date); });
-          db.confirmations = (db.confirmations || []).filter(function(x){ return !(x.key === sib.id + ":" + nowP.date); });
+          db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === sib.id && x.date === occurrenceDate(sib)); });
+          db.confirmations = (db.confirmations || []).filter(function(x){ return !(x.key === sib.id + ":" + occurrenceDate(sib)); });
         });
         saveLocal();
       }
@@ -1561,7 +1581,7 @@ function renderTeacherResults(list, title, metaChips){
     if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
     var cls = (e.program||"") + " — Sem " + (e.semester||"") + (e.section ? " Sec " + e.section : "");
     var st2 = entryStatusToday(e);
-    html += '<tr class="'+(st2 === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st2)+combinedBadge(e)+extraBadge(e)+(st2 === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Class">'+esc(cls)+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+    html += '<tr class="'+(st2 === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st2)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+(st2 === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Class">'+esc(cls)+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
   });
   html += '</tbody></table></div>';
   $("results").innerHTML = html;
