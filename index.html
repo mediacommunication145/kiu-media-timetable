@@ -106,6 +106,12 @@ tr:nth-child(even) td{background:#f7fafc}
 .cancel-alert>strong{color:#b3261e;display:block;margin-bottom:4px;font-size:1rem}
 .cancel-item{padding:6px 0;border-top:1px dashed #eec5c5}
 .cancel-item:first-of-type{border-top:none}
+.tut-overlay{position:fixed;inset:0;background:rgba(7,29,43,.72);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
+.tut-box{background:#fff;border-radius:16px;max-width:860px;width:100%;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.35);max-height:92vh;overflow:auto}
+.tut-box h3{margin:0 0 4px;color:var(--navy);font-size:1.25rem}
+.tut-box video{width:100%;border-radius:10px;background:#000;display:block}
+.tut-actions{display:flex;justify-content:flex-end;margin-top:12px}
+#tutClose[disabled]{opacity:.55;cursor:not-allowed}
 .rtable tr.row-on td{background:#f2fbf5}
 .rtable tr.row-on td:first-child{box-shadow:inset 4px 0 0 #22a559}
 .rtable tr.row-cancelled td{background:#fdf1f1}
@@ -235,6 +241,9 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
           <span class="chooser-title">For Teachers</span>
           <span class="chooser-sub">See your teaching schedule</span>
         </button>
+      </div>
+      <div class="actions" style="justify-content:center;margin-top:16px">
+        <button class="btn light" type="button" id="watchTutBtn">\u25b6 Watch the Video Tutorial (2 minutes)</button>
       </div>
     </div>
     <div class="card" id="appCard" style="border:2px solid #d9a441; background:#fffaf0">
@@ -607,6 +616,16 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<div class="tut-overlay hidden" id="tutorialModal" role="dialog" aria-modal="true" aria-label="Video tutorial">
+  <div class="tut-box">
+    <h3>Welcome! Watch this short tutorial</h3>
+    <p class="sub">See how to check your classes, step by step, in about two minutes.</p>
+    <video id="tutVideo" controls preload="metadata" playsinline src="tutorial.mp4"></video>
+    <div class="tut-actions">
+      <button class="btn" type="button" id="tutClose">Close</button>
+    </div>
+  </div>
+</div>
 <script>
 (function(){
 "use strict";
@@ -824,6 +843,36 @@ function statusDateTag(e){
   if(!rec || rec.date === pktParts().date) return "";
   return ' <span class="hint">(' + esc(fmtDate(rec.date)) + ')</span>';
 }
+var TUT_KEY = "kiu_tut_seen_v1", tutTimer = null;
+function openTutorial(auto){
+  var m = $("tutorialModal"); if(!m) return;
+  m.classList.remove("hidden");
+  var btn = $("tutClose"); if(!btn) return;
+  if(tutTimer){ clearInterval(tutTimer); tutTimer = null; }
+  if(auto){
+    var left = 10;
+    btn.disabled = true; btn.textContent = "Close (" + left + ")";
+    tutTimer = setInterval(function(){
+      left--;
+      if(left <= 0){ clearInterval(tutTimer); tutTimer = null; btn.disabled = false; btn.textContent = "Close"; }
+      else btn.textContent = "Close (" + left + ")";
+    }, 1000);
+  } else { btn.disabled = false; btn.textContent = "Close"; }
+}
+function closeTutorial(){
+  var m = $("tutorialModal"); if(!m) return;
+  var v = $("tutVideo"); if(v){ try{ v.pause(); }catch(e){} }
+  m.classList.add("hidden");
+  if(tutTimer){ clearInterval(tutTimer); tutTimer = null; }
+  try{ localStorage.setItem(TUT_KEY, "1"); }catch(e){}
+}
+function maybeShowTutorial(){
+  if(location.protocol === "file:"){ var wb = $("watchTutBtn"); if(wb) wb.style.display = "none"; return; }
+  var seen = false; try{ seen = !!localStorage.getItem(TUT_KEY); }catch(e){}
+  if(!seen) openTutorial(true);
+}
+$("tutClose").addEventListener("click", closeTutorial);
+$("watchTutBtn").addEventListener("click", function(){ openTutorial(false); });
 function renderCancelNotice(){
   var box = $("cancelNotice"); if(!box) return;
   var now = pktParts();
@@ -1937,6 +1986,7 @@ $("removeFileBtn").addEventListener("click", async function(){
 });
 
 init();
+maybeShowTutorial();
 })();
 </script>
 </body>
