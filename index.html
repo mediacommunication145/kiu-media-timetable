@@ -102,6 +102,10 @@ tr:nth-child(even) td{background:#f7fafc}
 .admin-grid .half{grid-column:span 1}
 .msg{padding:10px 14px;border-radius:9px;font-size:.9rem;margin:12px 0}
 .msg.ok{background:#e7f6ee;color:var(--green);border:1px solid #bfe6d2}
+.cancel-alert{background:#fdf1f1;border:1px solid #eec5c5;border-left:5px solid #d43a3a;border-radius:10px;padding:10px 14px;margin:0 0 14px}
+.cancel-alert>strong{color:#b3261e;display:block;margin-bottom:4px;font-size:1rem}
+.cancel-item{padding:6px 0;border-top:1px dashed #eec5c5}
+.cancel-item:first-of-type{border-top:none}
 .rtable tr.row-on td{background:#f2fbf5}
 .rtable tr.row-on td:first-child{box-shadow:inset 4px 0 0 #22a559}
 .rtable tr.row-cancelled td{background:#fdf1f1}
@@ -251,6 +255,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
         <button class="btn" type="button" id="tabStudent">For Students</button>
         <button class="btn light" type="button" id="tabTeacher">For Teachers</button>
       </div>
+      <div id="cancelNotice"></div>
       <form id="filterForm">
         <div class="filters">
           <div class="field">
@@ -819,6 +824,31 @@ function statusDateTag(e){
   if(!rec || rec.date === pktParts().date) return "";
   return ' <span class="hint">(' + esc(fmtDate(rec.date)) + ')</span>';
 }
+function renderCancelNotice(){
+  var box = $("cancelNotice"); if(!box) return;
+  var now = pktParts();
+  var end = addDaysStr(now.date, 6);
+  var groups = {}, order = [];
+  (db.cancellations || []).forEach(function(c){
+    if(c.date < now.date || c.date > end) return;
+    var e = (db.entries || []).find(function(x){ return x.id === c.entryId; });
+    if(!e) return;
+    var key = [e.subject, c.date, e.start, e.teacher || ""].join("|");
+    if(!groups[key]){ groups[key] = { e: e, c: c, progs: [] }; order.push(key); }
+    var ps = progShort(e.program);
+    if(groups[key].progs.indexOf(ps) < 0) groups[key].progs.push(ps);
+  });
+  if(!order.length){ box.innerHTML = ""; return; }
+  order.sort(function(a, b){ return groups[a].c.date < groups[b].c.date ? -1 : 1; });
+  box.innerHTML = '<div class="cancel-alert"><strong>Cancelled Classes</strong>' + order.map(function(key){
+    var g = groups[key], e = g.e, c = g.c;
+    var scope = g.progs.length > 1 ? g.progs.join("/") : "Only " + g.progs[0];
+    return '<div class="cancel-item"><span class="badge bad">CANCELLED</span> <strong>' + esc(e.subject) + '</strong> \u00b7 BS-' + esc(ordSem(e.semester)) + ' ' + esc(scope)
+      + '<br>' + esc(e.day) + ', ' + esc(fmtDate(c.date)) + (c.date === now.date ? ' (today)' : '') + ' \u00b7 ' + esc(timeRange(e)) + (e.teacher ? ' \u00b7 ' + esc(e.teacher) : '') + (e.room ? ' \u00b7 ' + esc(e.room) : '')
+      + (c.reason ? '<br><span class="hint">Reason: ' + esc(c.reason) + '</span>' : '')
+      + '</div>';
+  }).join("") + '</div>';
+}
 function statusBadge(st){
   if(st === "cancelled") return '<span class="badge bad">CANCELLED</span>';
   if(st === "confirmed") return '<span class="badge ok">CONFIRMED</span>';
@@ -1176,7 +1206,7 @@ async function uncancelEntryToday(id){
   }catch(err){ alert(err.message); }
 }
 function refreshAfterChange(){
-  catalogFromEntries(); fillSectionFilter(); fillDatalists(); renderPrograms(); renderAdminGrid(); fillTeacherSelect(); renderTeachers();
+  catalogFromEntries(); fillSectionFilter(); fillDatalists(); renderPrograms(); renderAdminGrid(); fillTeacherSelect(); renderTeachers(); renderCancelNotice();
   if(!$("studentView").classList.contains("hidden")) showPromptState();
 }
 async function reloadFromServer(){
@@ -1555,7 +1585,7 @@ function applyPortalState(){
 }
 function choosePortal(side){
   portalChosen = side;
-  applyPortalState();
+  applyPortalState(); renderCancelNotice();
   if(side === "teacher") $("tabTeacher").click(); else $("tabStudent").click();
   var c = $("portalCard"); if(c) c.scrollIntoView({ behavior: "smooth", block: "start" });
 }
