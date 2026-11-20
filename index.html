@@ -110,7 +110,7 @@ tr:nth-child(even) td{background:#f7fafc}
 .tut-box{background:#fff;border-radius:16px;max-width:860px;width:100%;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.35);max-height:92vh;overflow:auto}
 .tut-box h3{margin:0 0 4px;color:var(--navy);font-size:1.25rem}
 .tut-box video{width:100%;border-radius:10px;background:#000;display:block}
-.tut-actions{display:flex;justify-content:flex-end;margin-top:12px}
+.tut-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
 #tutClose[disabled]{opacity:.55;cursor:not-allowed}
 .rtable tr.row-on td{background:#f2fbf5}
 .rtable tr.row-on td:first-child{box-shadow:inset 4px 0 0 #22a559}
@@ -622,6 +622,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
     <p class="sub">See how to check your classes, step by step, in about two minutes.</p>
     <video id="tutVideo" controls preload="metadata" playsinline src="tutorial.mp4"></video>
     <div class="tut-actions">
+      <button class="btn light" type="button" id="tutSkip">Skip Video »</button>
       <button class="btn" type="button" id="tutClose">Close</button>
     </div>
   </div>
@@ -872,6 +873,7 @@ function maybeShowTutorial(){
   if(!seen) openTutorial(true);
 }
 $("tutClose").addEventListener("click", closeTutorial);
+$("tutSkip").addEventListener("click", closeTutorial);
 $("watchTutBtn").addEventListener("click", function(){ openTutorial(false); });
 function renderCancelNotice(){
   var box = $("cancelNotice"); if(!box) return;
