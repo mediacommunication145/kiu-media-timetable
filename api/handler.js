@@ -168,12 +168,19 @@ async function saveMeta(state, key, value) {
   state.metaMap[key] = value;
   await kvSet('kiu:meta', JSON.stringify(state.metaMap));
 }
-function getAnnouncement(state) {
+function getAnnouncement(state, forAdmin) {
   try {
     const a = JSON.parse(state.metaMap.announcement || '');
     if (a && a.text && a.at) {
-      const exp = new Date(a.at).getTime() + 24 * 60 * 60 * 1000;
-      if (!isNaN(exp) && Date.now() < exp) return { text: String(a.text), at: a.at, expiresAt: new Date(exp).toISOString() };
+      const atMs = new Date(a.at).getTime();
+      if (isNaN(atMs)) return null;
+      const startMs = a.startAt ? new Date(a.startAt).getTime() : atMs;
+      const endMs = a.endAt ? new Date(a.endAt).getTime() : atMs + 24 * 60 * 60 * 1000;
+      if (isNaN(startMs) || isNaN(endMs)) return null;
+      const now = Date.now();
+      if (now >= endMs) return null;
+      if (!forAdmin && now < startMs) return null;
+      return { text: String(a.text), at: a.at, startAt: new Date(startMs).toISOString(), expiresAt: new Date(endMs).toISOString() };
     }
   } catch (e) {}
   return null;
@@ -383,7 +390,7 @@ module.exports = async function handler(req, res) {
       if (method === 'GET' && p === '/api/admin/data') {
         const state = await loadState();
         const db = buildDb(state);
-        return send(res, 200, { teacherRecords: db.teacherRecords, cancellations: db.cancellations, confirmations: db.confirmations, announcement: getAnnouncement(state), sheets: [] }, 'application/json');
+        return send(res, 200, { teacherRecords: db.teacherRecords, cancellations: db.cancellations, confirmations: db.confirmations, announcement: getAnnouncement(state, true), sheets: [] }, 'application/json');
       }
       if (method === 'GET' && p === '/api/admin/backup') {
         const state = await loadState();
@@ -577,9 +584,19 @@ module.exports = async function handler(req, res) {
         const text = String(b.text || '').trim();
         if (!text) return send(res, 400, { error: 'Announcement text is required.' }, 'application/json');
         if (text.length > 600) return send(res, 400, { error: 'Announcement is too long (maximum 600 characters).' }, 'application/json');
+        const nowMs = Date.now();
+        let startMs = nowMs, endMs = null;
+        if (b.startAt) { startMs = new Date(b.startAt).getTime(); if (isNaN(startMs)) return send(res, 400, { error: 'The show-from time is not valid.' }, 'application/json'); }
+        if (b.endAt) { endMs = new Date(b.endAt).getTime(); if (isNaN(endMs)) return send(res, 400, { error: 'The show-until time is not valid.' }, 'application/json'); }
+        if (endMs === null) endMs = (b.startAt ? startMs : nowMs) + 24 * 60 * 60 * 1000;
+        if (endMs <= startMs) return send(res, 400, { error: 'The show-until time must be after the show-from time.' }, 'application/json');
+        if (endMs <= nowMs) return send(res, 400, { error: 'The show-until time is in the past.' }, 'application/json');
+        const stored = { text, at: new Date(nowMs).toISOString() };
+        if (b.startAt) stored.startAt = new Date(startMs).toISOString();
+        if (b.endAt) stored.endAt = new Date(endMs).toISOString();
         const state = await loadState();
-        await saveMeta(state, 'announcement', JSON.stringify({ text, at: new Date().toISOString() }));
-        return send(res, 200, { ok: true, announcement: getAnnouncement(state) }, 'application/json');
+        await saveMeta(state, 'announcement', JSON.stringify(stored));
+        return send(res, 200, { ok: true, announcement: getAnnouncement(state, true) }, 'application/json');
       }
       if (method === 'POST' && p === '/api/admin/announcement/delete') {
         const state = await loadState();
