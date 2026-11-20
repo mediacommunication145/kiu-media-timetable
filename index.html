@@ -401,6 +401,17 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
         <label for="annText">Announcement message (up to 600 characters)</label>
         <textarea id="annText" rows="3" maxlength="600" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:.95rem" placeholder="e.g. All classes will remain suspended tomorrow due to heavy snowfall."></textarea>
       </div>
+      <div class="admin-grid">
+        <div class="field">
+          <label for="annFrom">Show from (optional)</label>
+          <input id="annFrom" type="datetime-local">
+        </div>
+        <div class="field">
+          <label for="annTo">Show until (optional)</label>
+          <input id="annTo" type="datetime-local">
+        </div>
+      </div>
+      <p class="sub">Leave both times empty for the normal way: the announcement shows right away and removes itself after 24 hours. If you set the times, it shows only between those times (for example, from 9:00 AM to 3:00 PM).</p>
       <div class="actions">
         <button class="btn gold" type="button" id="annPublishBtn">Publish Announcement</button>
       </div>
@@ -917,9 +928,20 @@ $("watchTutBtn").addEventListener("click", function(){ openTutorial(false); });
 var annPending = false;
 function announcementActive(a){
   if(!a || !a.text) return false;
-  var exp = a.expiresAt ? Date.parse(a.expiresAt) : (Date.parse(a.at || "") + 24*3600*1000);
-  return isFinite(exp) && Date.now() < exp;
+  var st = a.startAt ? Date.parse(a.startAt) : Date.parse(a.at || "");
+  var en = a.expiresAt ? Date.parse(a.expiresAt) : (Date.parse(a.at || "") + 24*3600*1000);
+  var now = Date.now();
+  return isFinite(st) && isFinite(en) && now >= st && now < en;
 }
+function announcementState(a){
+  if(!a || !a.text) return "none";
+  var st = a.startAt ? Date.parse(a.startAt) : Date.parse(a.at || "");
+  var en = a.expiresAt ? Date.parse(a.expiresAt) : (Date.parse(a.at || "") + 24*3600*1000);
+  var now = Date.now();
+  if(!isFinite(st) || !isFinite(en) || now >= en) return "none";
+  return now < st ? "scheduled" : "live";
+}
+
 function fmtAnnWhen(iso){
   var d = new Date(iso); if(isNaN(d.getTime())) return "";
   try{ return d.toLocaleString("en-GB", { day:"numeric", month:"short", year:"numeric", hour:"numeric", minute:"2-digit", hour12:true, timeZone:"Asia/Karachi" }); }catch(e){ return d.toString(); }
@@ -943,32 +965,49 @@ $("annOk").addEventListener("click", closeAnnouncement);
 function renderAnnouncementAdmin(){
   var box = $("annCurrent"); if(!box) return;
   var a = db && db.announcement;
-  if(announcementActive(a)){
+  var state = announcementState(a);
+  if(state === "live"){
     var exp = a.expiresAt ? Date.parse(a.expiresAt) : (Date.parse(a.at) + 24*3600*1000);
     var hrs = Math.max(0, Math.round((exp - Date.now()) / 360000) / 10);
-    box.innerHTML = '<div class="msg ok"><strong>Currently showing to students:</strong><br>' + esc(a.text) + '<br><span class="hint">Posted: ' + esc(fmtAnnWhen(a.at)) + ' \u00b7 Time left: about ' + hrs + ' hour(s) \u00b7 It removes itself after 24 hours.</span><br><button class="btn danger" type="button" id="annDeleteBtn" style="margin-top:8px">Delete Announcement Now</button></div>';
+    box.innerHTML = '<div class="msg ok"><strong>Currently showing to students:</strong><br>' + esc(a.text) + '<br><span class="hint">Posted: ' + esc(fmtAnnWhen(a.at)) + ' \u00b7 Time left: about ' + hrs + ' hour(s) \u00b7 It removes itself after its show-until time.</span><br><button class="btn danger" type="button" id="annDeleteBtn" style="margin-top:8px">Delete Announcement Now</button></div>';
     var del = $("annDeleteBtn"); if(del) del.addEventListener("click", deleteAnnouncement);
+  } else if(state === "scheduled"){
+    box.innerHTML = '<div class="msg ok"><strong>Scheduled announcement:</strong><br>' + esc(a.text) + '<br><span class="hint">Will show from: ' + esc(fmtAnnWhen(a.startAt || a.at)) + (a.expiresAt ? ' \u00b7 Until: ' + esc(fmtAnnWhen(a.expiresAt)) : '') + '</span><br><button class="btn danger" type="button" id="annDeleteBtn" style="margin-top:8px">Delete Announcement Now</button></div>';
+    var del2 = $("annDeleteBtn"); if(del2) del2.addEventListener("click", deleteAnnouncement);
   } else {
     box.innerHTML = '<div class="msg">No announcement is showing right now.</div>';
   }
 }
+
 async function publishAnnouncement(){
   var msg = $("annMsg");
   var text = ($("annText").value || "").trim();
   if(!text){ msg.innerHTML = '<div class="msg err">Please write the announcement message first.</div>'; return; }
+  var fromV = $("annFrom").value, toV = $("annTo").value;
+  var startAt = fromV ? new Date(fromV).toISOString() : null;
+  var endAt = toV ? new Date(toV).toISOString() : null;
+  if(startAt && isNaN(Date.parse(startAt))){ msg.innerHTML = '<div class="msg err">The show-from time is not valid.</div>'; return; }
+  if(endAt && isNaN(Date.parse(endAt))){ msg.innerHTML = '<div class="msg err">The show-until time is not valid.</div>'; return; }
+  if(startAt && endAt && Date.parse(endAt) <= Date.parse(startAt)){ msg.innerHTML = '<div class="msg err">The show-until time must be after the show-from time.</div>'; return; }
+  if(endAt && Date.parse(endAt) <= Date.now()){ msg.innerHTML = '<div class="msg err">The show-until time is in the past.</div>'; return; }
   try{
     if(serverMode){
-      var r = await api("/api/admin/announcement", "POST", { text: text });
+      var body = { text: text };
+      if(startAt) body.startAt = startAt;
+      if(endAt) body.endAt = endAt;
+      var r = await api("/api/admin/announcement", "POST", body);
       db.announcement = r.announcement || null;
     } else {
-      db.announcement = { text: text, at: new Date().toISOString(), expiresAt: new Date(Date.now() + 24*3600*1000).toISOString() };
+      var stMs = startAt ? Date.parse(startAt) : Date.now();
+      db.announcement = { text: text, at: new Date().toISOString(), startAt: new Date(stMs).toISOString(), expiresAt: endAt ? new Date(Date.parse(endAt)).toISOString() : new Date(stMs + 24*3600*1000).toISOString() };
       saveLocal();
     }
-    $("annText").value = "";
-    msg.innerHTML = '<div class="msg ok">Announcement published. Students will see it when they open the website, for the next 24 hours.</div>';
+    $("annText").value = ""; $("annFrom").value = ""; $("annTo").value = "";
+    msg.innerHTML = '<div class="msg ok">Announcement published. Students will see it when they open the website during its show time.</div>';
     renderAnnouncementAdmin();
   }catch(e){ msg.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; }
 }
+
 async function deleteAnnouncement(){
   if(!confirm("Delete this announcement now? Students will stop seeing it right away.")) return;
   var msg = $("annMsg");
