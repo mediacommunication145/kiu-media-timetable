@@ -168,6 +168,16 @@ async function saveMeta(state, key, value) {
   state.metaMap[key] = value;
   await kvSet('kiu:meta', JSON.stringify(state.metaMap));
 }
+function getAnnouncement(state) {
+  try {
+    const a = JSON.parse(state.metaMap.announcement || '');
+    if (a && a.text && a.at) {
+      const exp = new Date(a.at).getTime() + 24 * 60 * 60 * 1000;
+      if (!isNaN(exp) && Date.now() < exp) return { text: String(a.text), at: a.at, expiresAt: new Date(exp).toISOString() };
+    }
+  } catch (e) {}
+  return null;
+}
 
 /* ---------------- password / session (same rules as the original server) ---------------- */
 function hashSecret(value) {
@@ -309,11 +319,12 @@ module.exports = async function handler(req, res) {
 
     /* ----- public ----- */
     if (method === 'GET' && p === '/api/timetable') {
-      const db = buildDb(await loadState());
+      const state = await loadState();
+      const db = buildDb(state);
       return send(res, 200, {
         department: db.department, university: db.university, programs: db.programs,
         sections: db.sections, subjects: db.subjects, teachers: db.teachers, rooms: db.rooms,
-        entries: db.entries, fileMeta: null,
+        entries: db.entries, fileMeta: null, announcement: getAnnouncement(state),
         cancellations: db.cancellations.map(c => ({ entryId: c.entryId, date: c.date, reason: c.reason || '' }))
       }, 'application/json');
     }
@@ -370,8 +381,9 @@ module.exports = async function handler(req, res) {
         return send(res, 200, { ok: true }, 'application/json');
       }
       if (method === 'GET' && p === '/api/admin/data') {
-        const db = buildDb(await loadState());
-        return send(res, 200, { teacherRecords: db.teacherRecords, cancellations: db.cancellations, confirmations: db.confirmations, sheets: [] }, 'application/json');
+        const state = await loadState();
+        const db = buildDb(state);
+        return send(res, 200, { teacherRecords: db.teacherRecords, cancellations: db.cancellations, confirmations: db.confirmations, announcement: getAnnouncement(state), sheets: [] }, 'application/json');
       }
       if (method === 'GET' && p === '/api/admin/backup') {
         const state = await loadState();
@@ -557,6 +569,22 @@ module.exports = async function handler(req, res) {
         const result = importCsvInto(state, String(b.csv || ''));
         if (result.added) await saveTimetable(state.entries);
         return send(res, 200, result, 'application/json');
+      }
+
+      /* ----- important announcement (shows to students for 24 hours) ----- */
+      if (method === 'POST' && p === '/api/admin/announcement') {
+        const b = await readBody(req);
+        const text = String(b.text || '').trim();
+        if (!text) return send(res, 400, { error: 'Announcement text is required.' }, 'application/json');
+        if (text.length > 600) return send(res, 400, { error: 'Announcement is too long (maximum 600 characters).' }, 'application/json');
+        const state = await loadState();
+        await saveMeta(state, 'announcement', JSON.stringify({ text, at: new Date().toISOString() }));
+        return send(res, 200, { ok: true, announcement: getAnnouncement(state) }, 'application/json');
+      }
+      if (method === 'POST' && p === '/api/admin/announcement/delete') {
+        const state = await loadState();
+        await saveMeta(state, 'announcement', '');
+        return send(res, 200, { ok: true }, 'application/json');
       }
 
       /* ----- today's decisions ----- */
