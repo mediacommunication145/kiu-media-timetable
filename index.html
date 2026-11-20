@@ -111,6 +111,15 @@ tr:nth-child(even) td{background:#f7fafc}
 .tut-box h3{margin:0 0 4px;color:var(--navy);font-size:1.25rem}
 .tut-box video{width:100%;border-radius:10px;background:#000;display:block}
 .tut-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
+.ann-overlay{position:fixed;inset:0;background:rgba(7,29,43,.72);z-index:2100;display:flex;align-items:center;justify-content:center;padding:16px}
+.ann-box{background:linear-gradient(160deg,#0b3d5c,#12618c 55%,#8a6508);border-radius:18px;max-width:560px;width:100%;padding:26px 24px;box-shadow:0 24px 60px rgba(0,0,0,.4);color:#fff;text-align:center}
+.ann-box .ann-icon{font-size:2.6rem;line-height:1}
+.ann-box h3{margin:8px 0 10px;font-size:1.45rem;color:#fff}
+.ann-box .ann-text{font-size:1.08rem;line-height:1.55;white-space:pre-wrap;word-wrap:break-word}
+.ann-box .ann-when{margin-top:12px;font-size:.85rem;opacity:.85}
+.ann-actions{display:flex;justify-content:center;gap:10px;margin-top:18px}
+.ann-actions .btn{background:#fff;color:var(--navy);border:none}
+.ann-actions .btn.light{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.6)}
 #tutClose[disabled]{opacity:.55;cursor:not-allowed}
 .rtable tr.row-on td{background:#f2fbf5}
 .rtable tr.row-on td:first-child{box-shadow:inset 4px 0 0 #22a559}
@@ -385,6 +394,20 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
   <!-- ============ ADMIN PANEL ============ -->
   <section id="adminView" class="hidden">
     <div class="card">
+      <h2>📢 Important Announcement</h2>
+      <p class="sub">Write an important message for students. It pops up for every student who opens the website, and it removes itself automatically after 24 hours. You can also delete it earlier if you want.</p>
+      <div id="annMsg"></div>
+      <div class="field">
+        <label for="annText">Announcement message (up to 600 characters)</label>
+        <textarea id="annText" rows="3" maxlength="600" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:.95rem" placeholder="e.g. All classes will remain suspended tomorrow due to heavy snowfall."></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn gold" type="button" id="annPublishBtn">Publish Announcement</button>
+      </div>
+      <div id="annCurrent" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
       <h2>Admin — Timetable Management</h2>
       <p class="sub">Add, edit or delete class entries. Changes are saved permanently and students see them right away.</p>
       <div id="adminMsg"></div>
@@ -616,6 +639,18 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<div class="ann-overlay hidden" id="announceModal" role="dialog" aria-modal="true" aria-label="Important announcement">
+  <div class="ann-box">
+    <div class="ann-icon">📢</div>
+    <h3>Important Announcement</h3>
+    <div class="ann-text" id="announceText"></div>
+    <div class="ann-when" id="announceWhen"></div>
+    <div class="ann-actions">
+      <button class="btn light" type="button" id="annSkip">Skip</button>
+      <button class="btn" type="button" id="annOk">Got It</button>
+    </div>
+  </div>
+</div>
 <div class="tut-overlay hidden" id="tutorialModal" role="dialog" aria-modal="true" aria-label="Video tutorial">
   <div class="tut-box">
     <h3>Welcome! Watch this short tutorial</h3>
@@ -656,7 +691,7 @@ function seedDb(){
       {id:"bs-dmm", name:"BS Digital Media and Marketing"}
     ],
     sections:[], subjects:[], teachers: SEED_TEACHERS.slice(), rooms:["Room 02"], entries: JSON.parse(JSON.stringify(SEED_ENTRIES)), fileMeta:null, seedV: 2,
-    teacherRecords:[], sheets:[], cancellations:[], confirmations:[]
+    teacherRecords:[], sheets:[], cancellations:[], confirmations:[], announcement:null
   };
 }
 function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(db)); }catch(e){} }
@@ -724,6 +759,7 @@ async function init(){
       try{ var me = await api("/api/admin/me"); if(me && me.admin){ await api("/api/admin/logout", "POST", {}); } }catch(e){}
     }
   }
+  maybeShowAnnouncement();
 }
 
 function $(id){ return document.getElementById(id); }
@@ -866,6 +902,7 @@ function closeTutorial(){
   m.classList.add("hidden");
   if(tutTimer){ clearInterval(tutTimer); tutTimer = null; }
   try{ localStorage.setItem(TUT_KEY, "1"); }catch(e){}
+  if(annPending){ annPending = false; maybeShowAnnouncement(); }
 }
 function maybeShowTutorial(){
   if(location.protocol === "file:"){ var wb = $("watchTutBtn"); if(wb) wb.style.display = "none"; return; }
@@ -875,6 +912,75 @@ function maybeShowTutorial(){
 $("tutClose").addEventListener("click", closeTutorial);
 $("tutSkip").addEventListener("click", closeTutorial);
 $("watchTutBtn").addEventListener("click", function(){ openTutorial(false); });
+
+/* ---------- Important announcement (shows to students for 24 hours) ---------- */
+var annPending = false;
+function announcementActive(a){
+  if(!a || !a.text) return false;
+  var exp = a.expiresAt ? Date.parse(a.expiresAt) : (Date.parse(a.at || "") + 24*3600*1000);
+  return isFinite(exp) && Date.now() < exp;
+}
+function fmtAnnWhen(iso){
+  var d = new Date(iso); if(isNaN(d.getTime())) return "";
+  try{ return d.toLocaleString("en-GB", { day:"numeric", month:"short", year:"numeric", hour:"numeric", minute:"2-digit", hour12:true, timeZone:"Asia/Karachi" }); }catch(e){ return d.toString(); }
+}
+function maybeShowAnnouncement(){
+  var m = $("announceModal"); if(!m) return false;
+  var a = db && db.announcement;
+  if(!announcementActive(a)) return false;
+  var tm = $("tutorialModal");
+  if(tm && !tm.classList.contains("hidden")){ annPending = true; return false; }
+  $("announceText").textContent = a.text;
+  $("announceWhen").textContent = a.at ? ("Posted: " + fmtAnnWhen(a.at)) : "";
+  m.classList.remove("hidden");
+  return true;
+}
+function closeAnnouncement(){
+  var m = $("announceModal"); if(m) m.classList.add("hidden");
+}
+$("annSkip").addEventListener("click", closeAnnouncement);
+$("annOk").addEventListener("click", closeAnnouncement);
+function renderAnnouncementAdmin(){
+  var box = $("annCurrent"); if(!box) return;
+  var a = db && db.announcement;
+  if(announcementActive(a)){
+    var exp = a.expiresAt ? Date.parse(a.expiresAt) : (Date.parse(a.at) + 24*3600*1000);
+    var hrs = Math.max(0, Math.round((exp - Date.now()) / 360000) / 10);
+    box.innerHTML = '<div class="msg ok"><strong>Currently showing to students:</strong><br>' + esc(a.text) + '<br><span class="hint">Posted: ' + esc(fmtAnnWhen(a.at)) + ' \u00b7 Time left: about ' + hrs + ' hour(s) \u00b7 It removes itself after 24 hours.</span><br><button class="btn danger" type="button" id="annDeleteBtn" style="margin-top:8px">Delete Announcement Now</button></div>';
+    var del = $("annDeleteBtn"); if(del) del.addEventListener("click", deleteAnnouncement);
+  } else {
+    box.innerHTML = '<div class="msg">No announcement is showing right now.</div>';
+  }
+}
+async function publishAnnouncement(){
+  var msg = $("annMsg");
+  var text = ($("annText").value || "").trim();
+  if(!text){ msg.innerHTML = '<div class="msg err">Please write the announcement message first.</div>'; return; }
+  try{
+    if(serverMode){
+      var r = await api("/api/admin/announcement", "POST", { text: text });
+      db.announcement = r.announcement || null;
+    } else {
+      db.announcement = { text: text, at: new Date().toISOString(), expiresAt: new Date(Date.now() + 24*3600*1000).toISOString() };
+      saveLocal();
+    }
+    $("annText").value = "";
+    msg.innerHTML = '<div class="msg ok">Announcement published. Students will see it when they open the website, for the next 24 hours.</div>';
+    renderAnnouncementAdmin();
+  }catch(e){ msg.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; }
+}
+async function deleteAnnouncement(){
+  if(!confirm("Delete this announcement now? Students will stop seeing it right away.")) return;
+  var msg = $("annMsg");
+  try{
+    if(serverMode){ await api("/api/admin/announcement/delete", "POST", {}); }
+    db.announcement = null;
+    if(!serverMode) saveLocal();
+    msg.innerHTML = '<div class="msg ok">Announcement deleted.</div>';
+    renderAnnouncementAdmin();
+  }catch(e){ msg.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; }
+}
+$("annPublishBtn").addEventListener("click", publishAnnouncement);
 function renderCancelNotice(){
   var box = $("cancelNotice"); if(!box) return;
   var now = pktParts();
@@ -1161,13 +1267,13 @@ $("tPdfBtn").addEventListener("click", pdfCurrent);
 /* ---------- View switching ---------- */
 function showStudent(){ $("studentView").classList.remove("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("adminToggleBtn").textContent = "Admin Login"; applyPortalState(); }
 function showLogin(){ $("studentView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("loginView").classList.remove("hidden"); }
-function showAdmin(){ $("studentView").classList.add("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.remove("hidden"); $("adminToggleBtn").textContent = "Student View"; renderAdminGrid(); renderTeachers(); renderPendingSheets(); if(serverMode) loadAdminData(); }
+function showAdmin(){ $("studentView").classList.add("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.remove("hidden"); $("adminToggleBtn").textContent = "Student View"; renderAdminGrid(); renderTeachers(); renderPendingSheets(); renderAnnouncementAdmin(); if(serverMode) loadAdminData(); }
 async function loadAdminData(){
   try{
     var d = await api("/api/admin/data");
     db.teacherRecords = d.teacherRecords || [];
     db.cancellations = d.cancellations || db.cancellations || []; db.confirmations = d.confirmations || [];
-    db.sheets = d.sheets || []; renderPendingSheets();
+    db.sheets = d.sheets || []; if("announcement" in d) db.announcement = d.announcement; renderPendingSheets(); renderAnnouncementAdmin();
     renderTeachers(); renderAdminGrid();
   }catch(e){}
 }
@@ -1257,7 +1363,7 @@ async function uncancelEntryToday(id){
   }catch(err){ alert(err.message); }
 }
 function refreshAfterChange(){
-  catalogFromEntries(); fillSectionFilter(); fillDatalists(); renderPrograms(); renderAdminGrid(); fillTeacherSelect(); renderTeachers(); renderCancelNotice();
+  catalogFromEntries(); fillSectionFilter(); fillDatalists(); renderPrograms(); renderAdminGrid(); fillTeacherSelect(); renderTeachers(); renderCancelNotice(); renderAnnouncementAdmin();
   if(!$("studentView").classList.contains("hidden")) showPromptState();
 }
 async function reloadFromServer(){
