@@ -685,8 +685,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
           <div class="field"><label for="geRoom">Classroom</label><input id="geRoom" list="dlRooms" placeholder="e.g. Room 02"></div>
         </div>
         <div class="tickrow">
-          <label><input type="checkbox" id="geConfirmToday"> Confirm this class (green)</label>
-          <label><input type="checkbox" id="geCancelToday"> Cancel this class (red)</label>
+          <label><input type="checkbox" id="geCancelToday"> Cancel this class (red) — every class is green (Confirmed) by default, unless cancelled</label>
         </div>
         <div class="field" style="margin-top:10px"><label for="geReason">Reason for cancelling (optional — students see it on the website)</label><input id="geReason" placeholder="e.g. Teacher not available today"></div>
         <p class="hint" id="geTickHint"></p>
@@ -936,9 +935,7 @@ function statusRecord(e){
   var date = occurrenceDate(e);
   var c = (db.cancellations || []).find(function(x){ return x.entryId === e.id && x.date === date; });
   if(c) return { status: "cancelled", date: date, reason: c.reason || "" };
-  var k = (db.confirmations || []).find(function(x){ return x.entryId === e.id && x.date === date && x.status === "confirmed"; });
-  if(k) return { status: "confirmed", date: date, reason: "" };
-  return null;
+  return { status: "confirmed", date: date, reason: "" };
 }
 function entryStatusToday(e){
   var rec = statusRecord(e);
@@ -951,7 +948,7 @@ function todayCancelReason(e){
 }
 function statusDateTag(e){
   var rec = statusRecord(e);
-  if(!rec || rec.date === pktParts().date) return "";
+  if(!rec || rec.status !== "cancelled" || rec.date === pktParts().date) return "";
   return ' <span class="hint">(' + esc(fmtDate(rec.date)) + ')</span>';
 }
 var TUT_KEY = "kiu_tut_seen_v1", tutTimer = null;
@@ -1800,16 +1797,15 @@ function openCellEditor(id, day, start, end){
   }
   var now = pktParts();
   var st = e ? entryStatusToday(e) : "";
-  $("geConfirmToday").checked = st === "confirmed";
   $("geCancelToday").checked = st === "cancelled";
   $("geReason").value = e ? todayCancelReason(e) : "";
   var classDay = e ? e.day : day;
   var occD = e ? occurrenceDate(e) : "";
   $("geTickHint").textContent = !e
-    ? "The Confirm / Cancel ticks set the saved class's status for its next date. Unticking both removes the decision."
+    ? "Every class is green (Confirmed) by default. Tick Cancel only if the saved class will NOT be held on its next date."
     : (occD === now.date
-      ? "This class is TODAY (" + fmtDate(occD) + "): the ticks set its status on the website. Unticking both removes the decision."
-      : "The ticks set this class's status for its next date — " + classDay + ", " + fmtDate(occD) + ". Students can see it on the website right away. Unticking both removes the decision.");
+      ? "This class is TODAY (" + fmtDate(occD) + "): it shows green (Confirmed) on the website by default. Tick Cancel only if it will not be held — unticking Cancel undoes a cancellation."
+      : "This class shows green (Confirmed) on the website by default. The Cancel tick applies to its next date — " + classDay + ", " + fmtDate(occD) + ". Untick Cancel to undo a cancellation.");
   $("geMsg").innerHTML = "";
   $("cellEditor").classList.remove("hidden");
   $("cellEditor").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -1818,8 +1814,6 @@ function closeCellEditor(){ $("cellEditor").classList.add("hidden"); }
 $("geClose").addEventListener("click", closeCellEditor);
 $("geDate").addEventListener("change", function(){ if($("geDate").value){ $("geExtra").checked = true; $("geDay").value = weekdayOfDate($("geDate").value); } });
 $("eDate").addEventListener("change", function(){ if($("eDate").value){ $("eExtra").checked = true; $("eDay").value = weekdayOfDate($("eDate").value); } });
-$("geConfirmToday").addEventListener("change", function(){ if($("geConfirmToday").checked) $("geCancelToday").checked = false; });
-$("geCancelToday").addEventListener("change", function(){ if($("geCancelToday").checked) $("geConfirmToday").checked = false; });
 $("geDelete").addEventListener("click", async function(){
   var id = $("geId").value; if(!id) return;
   if(!confirm("Delete this class entry? It will be removed from the timetable for everyone.")) return;
@@ -1849,13 +1843,11 @@ $("geSave").addEventListener("click", async function(){
     if(saved){
       if(serverMode){
         if($("geCancelToday").checked) await api("/api/admin/cancel-class", "POST", { entryId: saved.id, reason: $("geReason").value.trim() });
-        else if($("geConfirmToday").checked) await api("/api/admin/confirm-class", "POST", { entryId: saved.id });
         else await api("/api/admin/uncancel-class", "POST", { entryId: saved.id });
         await reloadFromServer(); await loadAdminData();
       } else {
         var sibs = siblingOf(saved);
         if($("geCancelToday").checked) sibs.forEach(function(sib){ localCancelClass(sib, "admin", $("geReason").value.trim()); });
-        else if($("geConfirmToday").checked) sibs.forEach(function(sib){ localConfirmClass(sib, "admin"); });
         else sibs.forEach(function(sib){
           db.cancellations = (db.cancellations || []).filter(function(x){ return !(x.entryId === sib.id && x.date === occurrenceDate(sib)); });
           db.confirmations = (db.confirmations || []).filter(function(x){ return !(x.key === sib.id + ":" + occurrenceDate(sib)); });
