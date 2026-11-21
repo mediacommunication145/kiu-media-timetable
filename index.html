@@ -467,7 +467,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
 
     <div class="card">
       <h2>📋 Class Report — by CRs</h2>
-      <p class="sub">Which classes were actually held, as reported by the class CRs. Pick any date to check an old report — reports are kept for 60 days. "Pending" means that class's CR has not reported yet.</p>
+      <p class="sub">Which classes were actually held, as reported by the class CRs. Pick any date to check an old report — reports are kept for 6 months. "Pending" means that class's CR has not reported yet.</p>
       <div class="actions no-print" style="margin-bottom:10px">
         <input type="date" id="crDate" aria-label="Report date">
         <button class="btn light" type="button" id="crTodayBtn">Today</button>
@@ -1273,7 +1273,7 @@ function crStatusText(st){
 function renderCrReport(){
   var box = $("crReportBox"); if(!box) return;
   var dateEl = $("crDate");
-  if(dateEl){ var todayD = pktParts().date; dateEl.max = todayD; if(!dateEl.value) dateEl.value = todayD; }
+  if(dateEl){ var todayD = pktParts().date; dateEl.max = todayD; var _cd = new Date(todayD + "T12:00:00Z"); _cd.setUTCMonth(_cd.getUTCMonth() - 6); dateEl.min = _cd.toISOString().slice(0, 10); if(!dateEl.value) dateEl.value = todayD; }
   var d = crReportData(crSelectedDate());
   if(!d.rows.length){ box.innerHTML = '<div class="msg">No classes were scheduled for ' + esc(d.day) + ", " + esc(fmtDate(d.date)) + ".</div>"; return; }
   var rows = d.rows.map(function(r){
