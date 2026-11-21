@@ -204,6 +204,13 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
   .card{border:none;box-shadow:none;padding:0}
   table{min-width:0}
 }
+#crPrintArea{display:none}
+#crPrintArea table{border-collapse:collapse;width:100%;margin:8px 0 14px}
+#crPrintArea th,#crPrintArea td{border:1px solid #999;padding:5px 8px;text-align:left;font-size:13px}
+@media print{
+  body.cr-printing main{display:none!important}
+  body.cr-printing #crPrintArea{display:block!important;padding:10px}
+}
 .chooser-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
 @media(max-width:560px){.chooser-grid{grid-template-columns:1fr}}
 .chooser-btn{appearance:none;border:2px solid #dbe4f0;border-radius:16px;background:linear-gradient(180deg,#f4f8ff,#ffffff);padding:26px 14px;cursor:pointer;font:inherit;transition:border-color .15s ease, transform .15s ease, box-shadow .15s ease}
@@ -459,8 +466,15 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
     </div>
 
     <div class="card">
-      <h2>📋 Today's Class Report — by CRs</h2>
-      <p class="sub">Which of today's classes were actually held, as reported by the class CRs. "Pending" means that class's CR has not reported yet.</p>
+      <h2>📋 Class Report — by CRs</h2>
+      <p class="sub">Which classes were actually held, as reported by the class CRs. Pick any date to check an old report — reports are kept for 60 days. "Pending" means that class's CR has not reported yet.</p>
+      <div class="actions no-print" style="margin-bottom:10px">
+        <input type="date" id="crDate" aria-label="Report date">
+        <button class="btn light" type="button" id="crTodayBtn">Today</button>
+        <span class="spacer"></span>
+        <button class="btn light" type="button" id="crDownloadBtn">⬇ Download</button>
+        <button class="btn light" type="button" id="crPrintBtn">🖨 Print</button>
+      </div>
       <div id="crReportBox"></div>
     </div>
 
@@ -686,6 +700,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
 
   </section>
 </main>
+  <div id="crPrintArea"></div>
 
 <footer class="site">
   <div class="wrap">
@@ -1166,7 +1181,7 @@ async function crMark(entryId, status){
       var now = pktParts();
       var e = (db.entries || []).find(function(x){ return x.id === entryId; });
       if(!e) throw new Error("Class not found.");
-      var row = { date: now.date, entryId: e.id, program: e.program, semester: String(e.semester), section: e.section || "", subject: e.subject, teacher: e.teacher, start: e.start, end: e.end, status: status, note: note, at: new Date().toISOString() };
+      var row = { date: now.date, entryId: e.id, program: e.program, semester: String(e.semester), section: e.section || "", subject: e.subject, teacher: e.teacher, room: e.room, start: e.start, end: e.end, status: status, note: note, at: new Date().toISOString() };
       db.reports = db.reports || [];
       var ix = db.reports.findIndex(function(r){ return r.date === now.date && r.entryId === entryId; });
       if(ix >= 0) db.reports[ix] = row; else db.reports.push(row);
@@ -1214,34 +1229,63 @@ async function crCodeAction(action, program, semester){
     renderCrCodes();
   }catch(e){ msg.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; }
 }
-function renderCrReport(){
-  var box = $("crReportBox"); if(!box) return;
-  var now = pktParts();
-  var reps = serverMode ? (db.crReports || []) : (db.reports || []).filter(function(r){ return r.date === now.date; });
-  var todays = (db.entries || []).filter(function(e){ return e.date ? e.date === now.date : e.day === now.day; })
+function crSelectedDate(){
+  var today = pktParts().date;
+  var v = $("crDate") ? String($("crDate").value || "") : "";
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v) || v > today) return today;
+  return v;
+}
+function crReportData(dateStr){
+  var dayName = weekdayOfDate(dateStr);
+  var reps = serverMode ? (db.crReports || []) : (db.reports || []);
+  var todays = (db.entries || []).filter(function(e){ return e.date ? e.date === dateStr : e.day === dayName; })
     .sort(function(a, b){ return String(a.start).localeCompare(String(b.start)) || String(a.program).localeCompare(String(b.program)); });
-  if(!todays.length){ box.innerHTML = '<div class="msg">No classes are scheduled for today (' + esc(now.day) + ").</div>"; return; }
   var held = 0, notHeld = 0, pending = 0, canc = 0;
   var teacherMap = {};
+  var seen = {};
   var rows = todays.map(function(e){
-    var rep = reps.find(function(r){ return r.entryId === e.id; }) || null;
-    var isCanc = (db.cancellations || []).some(function(c){ return c.date === now.date && c.entryId === e.id; });
+    seen[e.id] = true;
+    var rep = reps.find(function(r){ return r.date === dateStr && r.entryId === e.id; }) || null;
+    var isCanc = (db.cancellations || []).some(function(c){ return c.date === dateStr && c.entryId === e.id; });
     var tKey = e.teacher || "—";
     teacherMap[tKey] = teacherMap[tKey] || { held: 0, notHeld: 0 };
+    var status = "pending";
+    if(isCanc){ status = "cancelled"; canc++; }
+    else if(rep && rep.status === "held"){ status = "held"; held++; teacherMap[tKey].held++; }
+    else if(rep && rep.status === "not_held"){ status = "not_held"; notHeld++; teacherMap[tKey].notHeld++; }
+    else pending++;
+    return { entryId: e.id, subject: e.subject, classLabel: crProgShort(e.program) + "-" + e.semester, teacher: e.teacher || "—", room: e.room || "—", time: fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : ""), status: status, note: rep ? (rep.note || "") : "", rep: rep };
+  });
+  reps.filter(function(r){ return r.date === dateStr && !seen[r.entryId]; }).forEach(function(r){
+    var tKey = r.teacher || "—";
+    teacherMap[tKey] = teacherMap[tKey] || { held: 0, notHeld: 0 };
+    var status = r.status === "held" ? "held" : "not_held";
+    if(status === "held"){ held++; teacherMap[tKey].held++; } else { notHeld++; teacherMap[tKey].notHeld++; }
+    rows.push({ entryId: r.entryId, subject: r.subject || "", classLabel: crProgShort(r.program || "") + "-" + (r.semester || ""), teacher: r.teacher || "—", room: r.room || "—", time: fmtTime(r.start) + (r.end ? " – " + fmtTime(r.end) : ""), status: status, note: r.note || "", rep: r });
+  });
+  var teacherRows = Object.keys(teacherMap).sort().filter(function(t){ return teacherMap[t].held || teacherMap[t].notHeld; }).map(function(t){ return { teacher: t, held: teacherMap[t].held, notHeld: teacherMap[t].notHeld }; });
+  return { date: dateStr, day: dayName, rows: rows, counts: { total: rows.length, held: held, notHeld: notHeld, pending: pending, canc: canc }, teacherRows: teacherRows };
+}
+function crStatusText(st){
+  return st === "held" ? "Held" : st === "not_held" ? "Not Held" : st === "cancelled" ? "Cancelled by office" : "Pending";
+}
+function renderCrReport(){
+  var box = $("crReportBox"); if(!box) return;
+  var dateEl = $("crDate");
+  if(dateEl){ var todayD = pktParts().date; dateEl.max = todayD; if(!dateEl.value) dateEl.value = todayD; }
+  var d = crReportData(crSelectedDate());
+  if(!d.rows.length){ box.innerHTML = '<div class="msg">No classes were scheduled for ' + esc(d.day) + ", " + esc(fmtDate(d.date)) + ".</div>"; return; }
+  var rows = d.rows.map(function(r){
     var statusHtml;
-    if(isCanc){ statusHtml = '<span style="color:#a11"><strong>Cancelled by office</strong></span>'; canc++; }
-    else if(rep && rep.status === "held"){ statusHtml = '<span style="color:#157347"><strong>✅ Held</strong></span>'; held++; teacherMap[tKey].held++; }
-    else if(rep && rep.status === "not_held"){ statusHtml = '<span style="color:#a11"><strong>❌ Not Held</strong></span>' + (rep.note ? '<div class="hint">' + esc(rep.note) + "</div>" : ""); notHeld++; teacherMap[tKey].notHeld++; }
-    else { statusHtml = '<span style="color:#8a6508"><strong>⏳ Pending</strong> (CR has not reported yet)</span>'; pending++; }
-    var clearBtn = rep && !isCanc ? ' <button class="btn small light" type="button" data-cr-clear="' + e.id + '">Clear</button>' : "";
-    return "<tr><td>" + esc(e.subject) + "</td><td>" + crProgShort(e.program) + "-" + esc(String(e.semester)) + "</td><td>" + esc(e.teacher || "—") + "</td><td>" + esc(e.room || "—") + "</td><td>" + esc(fmtTime(e.start)) + (e.end ? " – " + esc(fmtTime(e.end)) : "") + "</td><td>" + statusHtml + clearBtn + "</td></tr>";
+    if(r.status === "cancelled") statusHtml = '<span style="color:#a11"><strong>Cancelled by office</strong></span>';
+    else if(r.status === "held") statusHtml = '<span style="color:#157347"><strong>✅ Held</strong></span>';
+    else if(r.status === "not_held") statusHtml = '<span style="color:#a11"><strong>❌ Not Held</strong></span>' + (r.note ? '<div class="hint">' + esc(r.note) + "</div>" : "");
+    else statusHtml = '<span style="color:#8a6508"><strong>⏳ Pending</strong> (CR has not reported yet)</span>';
+    var clearBtn = r.rep ? ' <button class="btn small light" type="button" data-cr-clear="' + r.entryId + '">Clear</button>' : "";
+    return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.time) + "</td><td>" + statusHtml + clearBtn + "</td></tr>";
   }).join("");
-  var tRows = Object.keys(teacherMap).sort().map(function(t){
-    var v = teacherMap[t];
-    if(!v.held && !v.notHeld) return "";
-    return "<tr><td>" + esc(t) + "</td><td>" + v.held + "</td><td>" + v.notHeld + "</td></tr>";
-  }).join("");
-  box.innerHTML = '<p class="sub" style="margin-top:0"><strong>' + esc(now.day) + ", " + esc(fmtDate(now.date)) + "</strong> · Total classes: " + todays.length + " · ✅ Held: " + held + " · ❌ Not held: " + notHeld + " · ⏳ Pending: " + pending + (canc ? " · Cancelled by office: " + canc : "") + "</p>" +
+  var tRows = d.teacherRows.map(function(t){ return "<tr><td>" + esc(t.teacher) + "</td><td>" + t.held + "</td><td>" + t.notHeld + "</td></tr>"; }).join("");
+  box.innerHTML = '<p class="sub" style="margin-top:0"><strong>' + esc(d.day) + ", " + esc(fmtDate(d.date)) + "</strong> · Total classes: " + d.counts.total + " · ✅ Held: " + d.counts.held + " · ❌ Not held: " + d.counts.notHeld + " · ⏳ Pending: " + d.counts.pending + (d.counts.canc ? " · Cancelled by office: " + d.counts.canc : "") + "</p>" +
     '<div class="table-wrap"><table class="sheet"><thead><tr><th>Subject</th><th>Class</th><th>Teacher</th><th>Classroom</th><th>Time</th><th>CR Report</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
     (tRows ? '<h3 style="margin:14px 0 6px;color:var(--navy)">By teacher (reported classes)</h3><div class="table-wrap"><table class="sheet"><thead><tr><th>Teacher</th><th>Held</th><th>Not Held</th></tr></thead><tbody>' + tRows + "</tbody></table></div>" : "");
   box.querySelectorAll("[data-cr-clear]").forEach(function(b){
@@ -1250,13 +1294,62 @@ function renderCrReport(){
 }
 async function crClearReport(entryId){
   if(!confirm("Clear this CR report? The class will show as Pending again, and the CR can report it once more.")) return;
-  var now = pktParts();
+  var dateStr = crSelectedDate();
   try{
-    if(serverMode){ await api("/api/admin/cr-report/delete", "POST", { entryId: entryId, date: now.date }); db.crReports = (db.crReports || []).filter(function(r){ return r.entryId !== entryId; }); }
-    else { db.reports = (db.reports || []).filter(function(r){ return !(r.date === now.date && r.entryId === entryId); }); saveLocal(); }
+    if(serverMode){ await api("/api/admin/cr-report/delete", "POST", { entryId: entryId, date: dateStr }); db.crReports = (db.crReports || []).filter(function(r){ return !(r.entryId === entryId && r.date === dateStr); }); }
+    else { db.reports = (db.reports || []).filter(function(r){ return !(r.date === dateStr && r.entryId === entryId); }); saveLocal(); }
     renderCrReport();
   }catch(e){ alert(e.message); }
 }
+function crCsvEsc(v){ v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function crReportCsv(dateStr){
+  var d = crReportData(dateStr);
+  var lines = [];
+  lines.push("Class Report - Department of Media and Communication, Karakoram International University");
+  lines.push("Date," + d.date + " (" + d.day + ")");
+  lines.push("Total classes," + d.counts.total + ",Held," + d.counts.held + ",Not held," + d.counts.notHeld + ",Pending," + d.counts.pending + ",Cancelled by office," + d.counts.canc);
+  lines.push("");
+  lines.push(["Subject", "Class", "Teacher", "Classroom", "Time", "CR Report", "Note"].join(","));
+  d.rows.forEach(function(r){ lines.push([r.subject, r.classLabel, r.teacher, r.room, r.time, crStatusText(r.status), r.note].map(crCsvEsc).join(",")); });
+  if(d.teacherRows.length){
+    lines.push("");
+    lines.push("By teacher (reported classes)");
+    lines.push(["Teacher", "Held", "Not Held"].join(","));
+    d.teacherRows.forEach(function(t){ lines.push([t.teacher, t.held, t.notHeld].map(crCsvEsc).join(",")); });
+  }
+  return lines.join("\n");
+}
+function downloadCrReport(){
+  var dateStr = crSelectedDate();
+  var blob = new Blob(["\ufeff" + crReportCsv(dateStr)], { type: "text/csv;charset=utf-8" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "kiu-class-report-" + dateStr + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+}
+function printCrReport(){
+  var d = crReportData(crSelectedDate());
+  var area = $("crPrintArea"); if(!area) return;
+  var rows = d.rows.map(function(r){
+    return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.time) + "</td><td>" + crStatusText(r.status) + (r.note ? " — " + esc(r.note) : "") + "</td></tr>";
+  }).join("");
+  var tRows = d.teacherRows.map(function(t){ return "<tr><td>" + esc(t.teacher) + "</td><td>" + t.held + "</td><td>" + t.notHeld + "</td></tr>"; }).join("");
+  area.innerHTML = "<h2 style='margin:0 0 2px'>Department of Media and Communication</h2>" +
+    "<div>Karakoram International University — Class Report (by CRs)</div>" +
+    "<p><strong>" + esc(d.day) + ", " + esc(fmtDate(d.date)) + "</strong> · Total classes: " + d.counts.total + " · Held: " + d.counts.held + " · Not held: " + d.counts.notHeld + " · Pending: " + d.counts.pending + (d.counts.canc ? " · Cancelled by office: " + d.counts.canc : "") + "</p>" +
+    (d.rows.length ? "<table><thead><tr><th>Subject</th><th>Class</th><th>Teacher</th><th>Classroom</th><th>Time</th><th>CR Report</th></tr></thead><tbody>" + rows + "</tbody></table>" : "<p>No classes were scheduled for this date.</p>") +
+    (tRows ? "<h3>By teacher (reported classes)</h3><table><thead><tr><th>Teacher</th><th>Held</th><th>Not Held</th></tr></thead><tbody>" + tRows + "</tbody></table>" : "");
+  document.body.classList.add("cr-printing");
+  var done = function(){ document.body.classList.remove("cr-printing"); window.removeEventListener("afterprint", done); };
+  window.addEventListener("afterprint", done);
+  setTimeout(done, 60000);
+  setTimeout(function(){ window.print(); }, 60);
+}
+$("crDate").addEventListener("change", renderCrReport);
+$("crTodayBtn").addEventListener("click", function(){ $("crDate").value = pktParts().date; renderCrReport(); });
+$("crDownloadBtn").addEventListener("click", downloadCrReport);
+$("crPrintBtn").addEventListener("click", printCrReport);
 function renderCancelNotice(){
   var box = $("cancelNotice"); if(!box) return;
   var now = pktParts();
