@@ -218,8 +218,9 @@ async function loadReports() {
   return parseJsonSafe(rS, []).filter(x => x && x.date && x.entryId);
 }
 async function saveReports(rows) {
-  const cut = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const kept = rows.filter(x => x.date >= cut).slice(-2000);
+  const cutD = new Date(); cutD.setMonth(cutD.getMonth() - 6);
+  const cut = cutD.toISOString().slice(0, 10);
+  const kept = rows.filter(x => x.date >= cut).slice(-10000);
   await kvSet('kiu:reports', JSON.stringify(kept));
 }
 function crTodayEntries(state, program, semester) {
