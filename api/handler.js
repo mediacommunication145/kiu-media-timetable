@@ -186,6 +186,49 @@ function getAnnouncement(state, forAdmin) {
   return null;
 }
 
+/* ---------------- CR (Class Representative) codes, sessions and class reports ---------------- */
+function crCodesMap(state) { return parseJsonSafe(state.metaMap.crCodes || '', {}); }
+function crKey(program, semester) { return String(program || '') + '|' + String(semester || ''); }
+function genCrCode() {
+  const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.randomBytes(6);
+  let c = '';
+  for (let i = 0; i < 6; i++) c += abc[bytes[i] % abc.length];
+  return 'CR-' + c;
+}
+function makeCrSession(program, semester) {
+  const payload = Buffer.from(JSON.stringify({ p: program, s: String(semester), exp: Date.now() + 12 * 60 * 60 * 1000 })).toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update('cr:' + payload).digest('hex');
+  return payload + '.' + sig;
+}
+function crFromReq(req) {
+  const m = (req.headers.cookie || '').match(/kiu_cr=([A-Za-z0-9_-]+)\.([a-f0-9]+)/);
+  if (!m) return null;
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update('cr:' + m[1]).digest('hex');
+  const a = Buffer.from(sig), b = Buffer.from(m[2]);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const o = JSON.parse(Buffer.from(m[1], 'base64url').toString('utf8'));
+    if (!o.p || !o.s || +o.exp < Date.now()) return null;
+    return { program: String(o.p), semester: String(o.s) };
+  } catch (e) { return null; }
+}
+async function loadReports() {
+  const [rS] = await kvPipeline([['GET', 'kiu:reports']]);
+  return parseJsonSafe(rS, []).filter(x => x && x.date && x.entryId);
+}
+async function saveReports(rows) {
+  const cut = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const kept = rows.filter(x => x.date >= cut).slice(-2000);
+  await kvSet('kiu:reports', JSON.stringify(kept));
+}
+function crTodayEntries(state, program, semester) {
+  const now = pktNow();
+  return state.entries
+    .filter(e => e.program === program && String(e.semester) === String(semester) && (e.date ? e.date === now.date : e.day === now.day))
+    .sort((a, b) => String(a.start).localeCompare(String(b.start)));
+}
+
 /* ---------------- password / session (same rules as the original server) ---------------- */
 function hashSecret(value) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -366,6 +409,62 @@ module.exports = async function handler(req, res) {
       return send(res, 200, { admin: isAdmin(req) }, 'application/json');
     }
 
+    /* ----- CR (Class Representative) ----- */
+    if (method === 'POST' && p === '/api/cr/login') {
+      const b = await readBody(req);
+      const code = String(b.code || '').trim().toUpperCase();
+      if (!code) return send(res, 400, { error: 'Please enter your CR code.' }, 'application/json');
+      const state = await loadState();
+      const map = crCodesMap(state);
+      const hit = Object.keys(map).find(k => map[k] && String(map[k].code || '').toUpperCase() === code);
+      if (!hit) return send(res, 401, { error: 'This CR code is not correct. Please check the code given by the department office.' }, 'application/json');
+      const parts = hit.split('|');
+      const secure = (req.headers['x-forwarded-proto'] || '') === 'https';
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'kiu_cr=' + makeCrSession(parts[0], parts[1]) + '; HttpOnly; Path=/; SameSite=Lax' + (secure ? '; Secure' : '') });
+      return res.end(JSON.stringify({ ok: true, program: parts[0], semester: parts[1] }));
+    }
+    if (method === 'POST' && p === '/api/cr/logout') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'kiu_cr=; HttpOnly; Path=/; Max-Age=0' });
+      return res.end(JSON.stringify({ ok: true }));
+    }
+    if (method === 'GET' && p === '/api/cr/me') {
+      return send(res, 200, { cr: crFromReq(req) }, 'application/json');
+    }
+    if (method === 'GET' && p === '/api/cr/today') {
+      const cr = crFromReq(req);
+      if (!cr) return send(res, 401, { error: 'CR login required.' }, 'application/json');
+      const state = await loadState();
+      const now = pktNow();
+      const db = buildDb(state);
+      const cancelledIds = new Set(db.cancellations.filter(c => c.date === now.date).map(c => c.entryId));
+      const reports = await loadReports();
+      const classes = crTodayEntries(state, cr.program, cr.semester).map(e => {
+        const rep = reports.find(r => r.date === now.date && r.entryId === e.id) || null;
+        return { id: e.id, subject: e.subject, teacher: e.teacher, room: e.room, start: e.start, end: e.end, section: e.section || '', cancelled: cancelledIds.has(e.id), report: rep ? { status: rep.status, note: rep.note || '', at: rep.at || '' } : null };
+      });
+      return send(res, 200, { date: now.date, day: now.day, program: cr.program, semester: cr.semester, classes }, 'application/json');
+    }
+    if (method === 'POST' && p === '/api/cr/report') {
+      const cr = crFromReq(req);
+      if (!cr) return send(res, 401, { error: 'CR login required.' }, 'application/json');
+      const b = await readBody(req);
+      const status = String(b.status || '');
+      if (status !== 'held' && status !== 'not_held') return send(res, 400, { error: 'Please choose Held or Not Held.' }, 'application/json');
+      const note = String(b.note || '').trim().slice(0, 200);
+      const state = await loadState();
+      const now = pktNow();
+      const entry = crTodayEntries(state, cr.program, cr.semester).find(e => e.id === String(b.entryId || ''));
+      if (!entry) return send(res, 400, { error: 'This class is not in your class list for today.' }, 'application/json');
+      const db = buildDb(state);
+      if (db.cancellations.some(c => c.date === now.date && c.entryId === entry.id)) return send(res, 400, { error: 'This class was cancelled by the office, so no report is needed.' }, 'application/json');
+      const reports = await loadReports();
+      const row = { date: now.date, entryId: entry.id, program: entry.program, semester: String(entry.semester), section: entry.section || '', subject: entry.subject, teacher: entry.teacher, start: entry.start, end: entry.end, status, note, at: new Date().toISOString() };
+      const ix = reports.findIndex(r => r.date === now.date && r.entryId === entry.id);
+      if (ix >= 0) reports[ix] = row; else reports.push(row);
+      await saveReports(reports);
+      return send(res, 200, { ok: true, report: { status: row.status, note: row.note, at: row.at } }, 'application/json');
+    }
+
     /* ----- admin (login required) ----- */
     if (p.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return send(res, 401, { error: 'Admin login required.' }, 'application/json');
@@ -390,7 +489,9 @@ module.exports = async function handler(req, res) {
       if (method === 'GET' && p === '/api/admin/data') {
         const state = await loadState();
         const db = buildDb(state);
-        return send(res, 200, { teacherRecords: db.teacherRecords, cancellations: db.cancellations, confirmations: db.confirmations, announcement: getAnnouncement(state, true), sheets: [] }, 'application/json');
+        const allReports = await loadReports();
+        const today = pktNow().date;
+        return send(res, 200, { teacherRecords: db.teacherRecords, cancellations: db.cancellations, confirmations: db.confirmations, announcement: getAnnouncement(state, true), crCodes: crCodesMap(state), crReports: allReports.filter(r => r.date === today), sheets: [] }, 'application/json');
       }
       if (method === 'GET' && p === '/api/admin/backup') {
         const state = await loadState();
@@ -601,6 +702,36 @@ module.exports = async function handler(req, res) {
       if (method === 'POST' && p === '/api/admin/announcement/delete') {
         const state = await loadState();
         await saveMeta(state, 'announcement', '');
+        return send(res, 200, { ok: true }, 'application/json');
+      }
+
+      /* ----- CR codes and class reports ----- */
+      if (method === 'POST' && p === '/api/admin/cr-code') {
+        const b = await readBody(req);
+        const program = String(b.program || '').trim();
+        const semester = String(b.semester || '').replace(/[^0-9]/g, '');
+        const state = await loadState();
+        const programs = parsePrograms(state.metaMap).map(x => x.name);
+        if (!programs.includes(program) || !semester || +semester < 1 || +semester > 8) return send(res, 400, { error: 'Please choose a valid class (program and semester).' }, 'application/json');
+        const map = crCodesMap(state);
+        const code = genCrCode();
+        map[crKey(program, semester)] = { code, updatedAt: new Date().toISOString() };
+        await saveMeta(state, 'crCodes', JSON.stringify(map));
+        return send(res, 200, { ok: true, code, crCodes: map }, 'application/json');
+      }
+      if (method === 'POST' && p === '/api/admin/cr-code/delete') {
+        const b = await readBody(req);
+        const state = await loadState();
+        const map = crCodesMap(state);
+        delete map[crKey(String(b.program || '').trim(), String(b.semester || '').replace(/[^0-9]/g, ''))];
+        await saveMeta(state, 'crCodes', JSON.stringify(map));
+        return send(res, 200, { ok: true, crCodes: map }, 'application/json');
+      }
+      if (method === 'POST' && p === '/api/admin/cr-report/delete') {
+        const b = await readBody(req);
+        const reports = await loadReports();
+        const kept = reports.filter(r => !(r.date === String(b.date || '') && r.entryId === String(b.entryId || '')));
+        await saveReports(kept);
         return send(res, 200, { ok: true }, 'application/json');
       }
 
