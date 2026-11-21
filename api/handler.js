@@ -213,6 +213,17 @@ function crFromReq(req) {
     return { program: String(o.p), semester: String(o.s) };
   } catch (e) { return null; }
 }
+/* ---------------- login brute-force guard (counters live in kiu:meta) ---------------- */
+function guardState(state, key) { return parseJsonSafe(state.metaMap[key] || '', { fails: 0, until: 0 }); }
+function guardLocked(state, key) { const g = guardState(state, key); return !!(g.until && +g.until > Date.now()); }
+async function guardFail(state, key, max) {
+  const g = guardState(state, key);
+  g.fails = (g.fails || 0) + 1;
+  if (g.fails >= max) { g.until = Date.now() + 15 * 60 * 1000; g.fails = 0; }
+  await saveMeta(state, key, JSON.stringify(g));
+}
+async function guardReset(state, key) { if (state.metaMap[key]) await saveMeta(state, key, ''); }
+
 async function loadReports() {
   const [rS] = await kvPipeline([['GET', 'kiu:reports']]);
   return parseJsonSafe(rS, []).filter(x => x && x.date && x.entryId);
@@ -388,9 +399,11 @@ module.exports = async function handler(req, res) {
     if (method === 'POST' && p === '/api/admin/login') {
       const body = await readBody(req);
       const state = await loadState();
-      if (!checkPw(state, body.password || '')) return send(res, 401, { error: 'Incorrect password.' }, 'application/json');
+      if (guardLocked(state, 'loginGuard')) return send(res, 429, { error: 'Too many wrong attempts. Please wait 15 minutes and try again.' }, 'application/json');
+      if (!checkPw(state, body.password || '')) { await guardFail(state, 'loginGuard', 10); return send(res, 401, { error: 'Incorrect password.' }, 'application/json'); }
+      await guardReset(state, 'loginGuard');
       const secure = (req.headers['x-forwarded-proto'] || 'https') === 'https';
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'kiu_admin=' + makeSession() + '; HttpOnly; Path=/; SameSite=Lax' + (secure ? '; Secure' : '') });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Set-Cookie': 'kiu_admin=' + makeSession() + '; HttpOnly; Path=/; SameSite=Lax' + (secure ? '; Secure' : '') });
       return res.end(JSON.stringify({ ok: true }));
     }
     if (method === 'POST' && p === '/api/admin/forgot-password') {
@@ -398,12 +411,14 @@ module.exports = async function handler(req, res) {
       const newPw = String(body.newPassword || '');
       if (newPw.length < 6) return send(res, 400, { error: 'New password must be at least 6 characters.' }, 'application/json');
       const state = await loadState();
-      if (!checkRec(state, body.recoveryKey || '')) return send(res, 401, { error: 'Incorrect recovery key.' }, 'application/json');
+      if (guardLocked(state, 'recGuard')) return send(res, 429, { error: 'Too many wrong attempts. Please wait 15 minutes and try again.' }, 'application/json');
+      if (!checkRec(state, body.recoveryKey || '')) { await guardFail(state, 'recGuard', 10); return send(res, 401, { error: 'Incorrect recovery key.' }, 'application/json'); }
+      await guardReset(state, 'recGuard');
       await saveMeta(state, 'pw', hashSecret(newPw));
       return send(res, 200, { ok: true }, 'application/json');
     }
     if (method === 'POST' && p === '/api/admin/logout') {
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'kiu_admin=; HttpOnly; Path=/; Max-Age=0' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Set-Cookie': 'kiu_admin=; HttpOnly; Path=/; Max-Age=0' });
       return res.end(JSON.stringify({ ok: true }));
     }
     if (method === 'GET' && p === '/api/admin/me') {
@@ -416,16 +431,18 @@ module.exports = async function handler(req, res) {
       const code = String(b.code || '').trim().toUpperCase();
       if (!code) return send(res, 400, { error: 'Please enter your CR code.' }, 'application/json');
       const state = await loadState();
+      if (guardLocked(state, 'crGuard')) return send(res, 429, { error: 'Too many wrong attempts. Please wait 15 minutes and try again.' }, 'application/json');
       const map = crCodesMap(state);
       const hit = Object.keys(map).find(k => map[k] && String(map[k].code || '').toUpperCase() === code);
-      if (!hit) return send(res, 401, { error: 'This CR code is not correct. Please check the code given by the department office.' }, 'application/json');
+      if (!hit) { await guardFail(state, 'crGuard', 20); return send(res, 401, { error: 'This CR code is not correct. Please check the code given by the department office.' }, 'application/json'); }
+      await guardReset(state, 'crGuard');
       const parts = hit.split('|');
       const secure = (req.headers['x-forwarded-proto'] || '') === 'https';
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'kiu_cr=' + makeCrSession(parts[0], parts[1]) + '; HttpOnly; Path=/; SameSite=Lax' + (secure ? '; Secure' : '') });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Set-Cookie': 'kiu_cr=' + makeCrSession(parts[0], parts[1]) + '; HttpOnly; Path=/; SameSite=Lax' + (secure ? '; Secure' : '') });
       return res.end(JSON.stringify({ ok: true, program: parts[0], semester: parts[1] }));
     }
     if (method === 'POST' && p === '/api/cr/logout') {
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'kiu_cr=; HttpOnly; Path=/; Max-Age=0' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Set-Cookie': 'kiu_cr=; HttpOnly; Path=/; Max-Age=0' });
       return res.end(JSON.stringify({ ok: true }));
     }
     if (method === 'GET' && p === '/api/cr/me') {
