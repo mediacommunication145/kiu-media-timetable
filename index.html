@@ -471,6 +471,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
       <div class="actions no-print" style="margin-bottom:10px">
         <input type="date" id="crDate" aria-label="Report date">
         <button class="btn light" type="button" id="crTodayBtn">Today</button>
+        <button class="btn gold" type="button" id="crViewBtn">View Report</button>
         <span class="spacer"></span>
         <button class="btn light" type="button" id="crDownloadBtn">⬇ Download</button>
         <button class="btn light" type="button" id="crPrintBtn">🖨 Print</button>
@@ -1348,6 +1349,7 @@ function printCrReport(){
 }
 $("crDate").addEventListener("change", renderCrReport);
 $("crTodayBtn").addEventListener("click", function(){ $("crDate").value = pktParts().date; renderCrReport(); });
+$("crViewBtn").addEventListener("click", renderCrReport);
 $("crDownloadBtn").addEventListener("click", downloadCrReport);
 $("crPrintBtn").addEventListener("click", printCrReport);
 function renderCancelNotice(){
