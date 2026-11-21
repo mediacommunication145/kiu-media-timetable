@@ -458,7 +458,7 @@ module.exports = async function handler(req, res) {
       const db = buildDb(state);
       if (db.cancellations.some(c => c.date === now.date && c.entryId === entry.id)) return send(res, 400, { error: 'This class was cancelled by the office, so no report is needed.' }, 'application/json');
       const reports = await loadReports();
-      const row = { date: now.date, entryId: entry.id, program: entry.program, semester: String(entry.semester), section: entry.section || '', subject: entry.subject, teacher: entry.teacher, start: entry.start, end: entry.end, status, note, at: new Date().toISOString() };
+      const row = { date: now.date, entryId: entry.id, program: entry.program, semester: String(entry.semester), section: entry.section || '', subject: entry.subject, teacher: entry.teacher, room: entry.room, start: entry.start, end: entry.end, status, note, at: new Date().toISOString() };
       const ix = reports.findIndex(r => r.date === now.date && r.entryId === entry.id);
       if (ix >= 0) reports[ix] = row; else reports.push(row);
       await saveReports(reports);
@@ -490,8 +490,7 @@ module.exports = async function handler(req, res) {
         const state = await loadState();
         const db = buildDb(state);
         const allReports = await loadReports();
-        const today = pktNow().date;
-        return send(res, 200, { teacherRecords: db.teacherRecords, cancellations: db.cancellations, confirmations: db.confirmations, announcement: getAnnouncement(state, true), crCodes: crCodesMap(state), crReports: allReports.filter(r => r.date === today), sheets: [] }, 'application/json');
+        return send(res, 200, { teacherRecords: db.teacherRecords, cancellations: db.cancellations, confirmations: db.confirmations, announcement: getAnnouncement(state, true), crCodes: crCodesMap(state), crReports: allReports, sheets: [] }, 'application/json');
       }
       if (method === 'GET' && p === '/api/admin/backup') {
         const state = await loadState();
