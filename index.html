@@ -424,7 +424,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
             <div class="actions">
               <button class="btn gold" type="submit">Reset Password</button>
             </div>
-            <p class="hint">Enter the recovery key the administrator set (default: kiu-recovery-2025 — the administrator should change it in the admin panel after the first login).</p>
+            <p class="hint">Enter the recovery key the administrator set.</p>
           </form>
         </div>
       </div>
@@ -739,8 +739,8 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
 "use strict";
 var DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 var LS_KEY = "kiu_media_timetable_v1";
-var LOCAL_ADMIN_PASSWORD = "kiu-admin-2025"; // standalone-file demo mode only; server mode checks the real password on the server
-var DEFAULT_RECOVERY = "kiu-recovery-2025";
+var LOCAL_ADMIN_PASSWORD = "local-demo-admin"; // standalone-file demo mode only; server mode checks the real password on the server
+var DEFAULT_RECOVERY = "local-demo-recovery";
 var PW_LS_KEY = "kiu_media_pw", REC_LS_KEY = "kiu_media_rec", FILE_LS_KEY = "kiu_media_tt_file_v1";
 var selectedDays = {};
 var tSelectedDays = {};
