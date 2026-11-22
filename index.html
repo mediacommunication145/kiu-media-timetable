@@ -802,15 +802,18 @@ async function api(path, method, body){
   return data;
 }
 
-async function init(){
-  var data = null;
-  try{ data = await api("/api/timetable"); }catch(e){}
-  if(!(data && data.programs) && (location.protocol === "http:" || location.protocol === "https:")){
-    await new Promise(function(r){ setTimeout(r, 2500); });
-    try{ data = await api("/api/timetable"); }catch(e){}
-  }
-  if(data && data.programs){ db = data; serverMode = true; }
-  else loadLocal();
+var TT_CACHE_KEY = "kiu_tt_cache_v1";
+function loadTtCache(){
+  try{
+    var raw = localStorage.getItem(TT_CACHE_KEY); if(!raw) return null;
+    var data = JSON.parse(raw);
+    return (data && data.programs && data.entries) ? data : null;
+  }catch(e){ return null; }
+}
+function saveTtCache(data){
+  try{ localStorage.setItem(TT_CACHE_KEY, JSON.stringify(data)); }catch(e){}
+}
+function renderAll(){
   if(!db.sheets) db.sheets = [];
   if(!db.crCodes) db.crCodes = {}; if(!db.reports) db.reports = []; if(!db.crReports) db.crReports = [];
   if(!("fileMeta" in db)) db.fileMeta = null;
@@ -818,7 +821,22 @@ async function init(){
   fillProgramSelects(); fillSectionFilter(); fillDatalists(); renderPrograms();
   buildDayChips(); buildTDayChips(); fillTeacherSelect(); renderFileCard(); renderFileAdmin();
   showStudent(); showPromptState(); restoreFilters();
-  if(!serverMode && (location.protocol === "http:" || location.protocol === "https:")){
+}
+
+async function init(){
+  var fromCache = false;
+  var cached = (location.protocol === "http:" || location.protocol === "https:") ? loadTtCache() : null;
+  if(cached){ db = cached; serverMode = true; renderAll(); fromCache = true; }
+  var data = null;
+  try{ data = await api("/api/timetable"); }catch(e){}
+  if(!(data && data.programs) && (location.protocol === "http:" || location.protocol === "https:")){
+    await new Promise(function(r){ setTimeout(r, 2500); });
+    try{ data = await api("/api/timetable"); }catch(e){}
+  }
+  var fresh = !!(data && data.programs);
+  if(fresh){ db = data; serverMode = true; saveTtCache(data); renderAll(); }
+  else if(!fromCache){ loadLocal(); renderAll(); }
+  if(!fresh && (location.protocol === "http:" || location.protocol === "https:")){
     var note = document.createElement("div");
     note.className = "msg err";
     note.textContent = "Could not load the latest timetable from the server — showing saved data instead. Please check your connection and refresh the page.";
@@ -832,7 +850,7 @@ async function init(){
       try{ var me = await api("/api/admin/me"); if(me && me.admin){ await api("/api/admin/logout", "POST", {}); } }catch(e){}
     }
   }
-  maybeShowAnnouncement();
+  if(fresh) maybeShowAnnouncement();
 }
 
 function $(id){ return document.getElementById(id); }
@@ -1736,7 +1754,7 @@ function refreshAfterChange(){
 }
 async function reloadFromServer(){
   var keep = { teacherRecords: db.teacherRecords || [], confirmations: db.confirmations || [], crCodes: db.crCodes || {}, crReports: db.crReports || [] };
-  var data = await api("/api/timetable"); db = data;
+  var data = await api("/api/timetable"); db = data; saveTtCache(data);
   db.teacherRecords = keep.teacherRecords; db.confirmations = keep.confirmations; db.crCodes = keep.crCodes; db.crReports = keep.crReports;
   catalogFromEntries();
   fillProgramSelects(); refreshAfterChange();
