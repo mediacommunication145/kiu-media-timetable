@@ -83,6 +83,9 @@ main{max-width:1080px;margin:0 auto;padding:20px 16px 40px}
 .field label{display:block;font-weight:600;font-size:.88rem;margin-bottom:6px;color:var(--navy)}
 .field select,.field input{width:100%;padding:12px 10px;border:1px solid var(--line);border-radius:9px;font-size:1rem;background:#fff;color:var(--ink);min-height:48px}
 .field select:focus,.field input:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:70px}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:1px solid var(--line);background:#eef1f7;color:var(--navy);border-radius:7px;padding:6px 10px;font-size:.82rem;font-weight:600;cursor:pointer;min-height:34px}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
 .actions .spacer{flex:1}
 .hint{font-size:.85rem;color:var(--muted);margin-top:10px}
@@ -400,7 +403,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
       <form id="loginForm">
         <div class="field">
           <label for="adminPassword">Password</label>
-          <input type="password" id="adminPassword" autocomplete="current-password" required>
+          <div class="pw-wrap"><input type="password" id="adminPassword" autocomplete="current-password" required><button type="button" class="pw-eye" data-pw="adminPassword">Show</button></div>
         </div>
         <div id="loginMsg"></div>
         <div class="actions">
@@ -414,11 +417,11 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
           <form id="forgotForm">
             <div class="field">
               <label for="recKey">Recovery Key</label>
-              <input type="password" id="recKey" autocomplete="off" required>
+              <div class="pw-wrap"><input type="password" id="recKey" autocomplete="off" required><button type="button" class="pw-eye" data-pw="recKey">Show</button></div>
             </div>
             <div class="field" style="margin-top:10px">
               <label for="newPwForgot">New Password (min 6 characters)</label>
-              <input type="password" id="newPwForgot" autocomplete="new-password" required minlength="6">
+              <div class="pw-wrap"><input type="password" id="newPwForgot" autocomplete="new-password" required minlength="6"><button type="button" class="pw-eye" data-pw="newPwForgot">Show</button></div>
             </div>
             <div id="forgotMsg"></div>
             <div class="actions">
@@ -601,11 +604,11 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
         <div class="admin-grid">
           <div class="field">
             <label for="curPw">Current Password</label>
-            <input type="password" id="curPw" autocomplete="current-password" required>
+            <div class="pw-wrap"><input type="password" id="curPw" autocomplete="current-password" required><button type="button" class="pw-eye" data-pw="curPw">Show</button></div>
           </div>
           <div class="field">
             <label for="newPw">New Password (min 6)</label>
-            <input type="password" id="newPw" autocomplete="new-password" required minlength="6">
+            <div class="pw-wrap"><input type="password" id="newPw" autocomplete="new-password" required minlength="6"><button type="button" class="pw-eye" data-pw="newPw">Show</button></div>
           </div>
           <div class="field">
             <label for="recKeySet">Recovery Key (min 6) — keep it private</label>
@@ -802,6 +805,18 @@ async function api(path, method, body){
   return data;
 }
 
+try{
+  document.querySelectorAll(".pw-eye").forEach(function(b){
+    b.addEventListener("click", function(){
+      var inp = document.getElementById(b.getAttribute("data-pw"));
+      if(!inp) return;
+      var show = inp.type === "password";
+      inp.type = show ? "text" : "password";
+      b.textContent = show ? "Hide" : "Show";
+      try{ inp.focus(); }catch(e){}
+    });
+  });
+}catch(e){}
 var TT_CACHE_KEY = "kiu_tt_cache_v1";
 function loadTtCache(){
   try{
