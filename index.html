@@ -1524,6 +1524,7 @@ function downloadCrReport(){
 }
 function printCrReport(){
   var d = crReportData(crSelectedDate());
+  crScopeSemester(d, $("crSemSel") ? String($("crSemSel").value || "all") : "all");
   var area = $("crPrintArea"); if(!area) return;
   var printRowHtml = function(r){
     return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.time) + "</td><td>" + crStatusText(r.status) + (r.note ? " — " + esc(r.note) : "") + "</td></tr>";
@@ -1533,9 +1534,9 @@ function printCrReport(){
   }).join("");
   var tRows = d.teacherRows.map(function(t){ return "<tr><td>" + esc(t.teacher) + "</td><td>" + t.held + "</td><td>" + t.notHeld + "</td></tr>"; }).join("");
   area.innerHTML = "<h2 style='margin:0 0 2px'>Department of Media and Communication</h2>" +
-    "<div>Karakoram International University — Class Report (by CRs)</div>" +
+    "<div>Karakoram International University — Class Report (by CRs)" + (d.semesterOnly ? " — Semester " + d.semesterOnly + " only" : "") + "</div>" +
     "<p><strong>" + esc(d.day) + ", " + esc(fmtDate(d.date)) + "</strong> · Total classes: " + d.counts.total + " · Held: " + d.counts.held + " · Not held: " + d.counts.notHeld + " · Pending: " + d.counts.pending + (d.counts.canc ? " · Cancelled by office: " + d.counts.canc : "") + "</p>" +
-    (d.rows.length ? "<table><thead><tr><th>Subject</th><th>Class</th><th>Teacher</th><th>Classroom</th><th>Time</th><th>CR Report</th></tr></thead><tbody>" + rows + "</tbody></table>" : "<p>No classes were scheduled for this date.</p>") +
+    (d.rows.length ? "<table><thead><tr><th>Subject</th><th>Class</th><th>Teacher</th><th>Classroom</th><th>Time</th><th>CR Report</th></tr></thead><tbody>" + rows + "</tbody></table>" : "<p>" + (d.semesterOnly ? "No Semester " + d.semesterOnly + " classes were scheduled for this date." : "No classes were scheduled for this date.") + "</p>") +
     (tRows ? "<h3>By teacher (reported classes)</h3><table><thead><tr><th>Teacher</th><th>Held</th><th>Not Held</th></tr></thead><tbody>" + tRows + "</tbody></table>" : "");
   document.body.classList.add("cr-printing");
   var done = function(){ document.body.classList.remove("cr-printing"); window.removeEventListener("afterprint", done); };
