@@ -1479,14 +1479,15 @@ function downloadCrReportPdf(){
     g.rows.forEach(function(r){
       var subj = doc.splitTextToSize(r.subject || "", 145);
       var teach = doc.splitTextToSize(r.teacher || "", 86);
+      var tim = doc.splitTextToSize(r.time || "", 76);
       var rep = doc.splitTextToSize(crStatusText(r.status) + (r.note ? " \u2014 " + r.note : ""), 98);
-      var lines = Math.max(subj.length, teach.length, rep.length, 1);
+      var lines = Math.max(subj.length, teach.length, rep.length, tim.length, 1);
       newPageIfNeeded(lines * 11 + 4);
       doc.text(subj, cols[0], y);
       doc.text(r.classLabel || "", cols[1], y);
       doc.text(teach, cols[2], y);
       doc.text(r.room || "", cols[3], y);
-      doc.text(doc.splitTextToSize(r.time || "", 76), cols[4], y);
+      doc.text(tim, cols[4], y);
       if(r.status === "held") doc.setTextColor(21, 115, 71); else if(r.status === "not_held" || r.status === "cancelled") doc.setTextColor(161, 17, 17); else if(r.status === "pending") doc.setTextColor(138, 101, 8);
       doc.text(rep, cols[5], y);
       doc.setTextColor(60, 60, 60);
@@ -1881,12 +1882,19 @@ function pdfCurrent(){
   doc.setFont(undefined,"normal"); y += 8; doc.line(40, y, W-40, y); y += 16;
   currentResults.forEach(function(e){
     if(y > 790){ doc.addPage(); y = 56; }
-    doc.text(doc.splitTextToSize(e.day||"", 70), cols[0], y);
-    doc.text(doc.splitTextToSize((e.subject||"") + (entryStatusToday(e) === "cancelled" ? " (CANCELLED" + (statusRecord(e) && statusRecord(e).date !== pktParts().date ? " " + fmtDate(statusRecord(e).date) : "") + ")" : ""), 155), cols[1], y);
-    doc.text(doc.splitTextToSize(currentView === "teacher" ? ((e.program||"") + " Sem " + (e.semester||"")) : (e.teacher||"—"), 115), cols[2], y);
-    doc.text(doc.splitTextToSize(e.room||"—", 85), cols[3], y);
-    doc.text(doc.splitTextToSize(timeRange(e), 70), cols[4], y);
-    y += 18;
+    var c0 = doc.splitTextToSize(e.day||"", 70);
+    var c1 = doc.splitTextToSize((e.subject||"") + (entryStatusToday(e) === "cancelled" ? " (CANCELLED" + (statusRecord(e) && statusRecord(e).date !== pktParts().date ? " " + fmtDate(statusRecord(e).date) : "") + ")" : ""), 155);
+    var c2 = doc.splitTextToSize(currentView === "teacher" ? ((e.program||"") + " Sem " + (e.semester||"")) : (e.teacher||"—"), 115);
+    var c3 = doc.splitTextToSize(e.room||"—", 85);
+    var c4 = doc.splitTextToSize(timeRange(e), 70);
+    var rowLines = Math.max(c0.length, c1.length, c2.length, c3.length, c4.length, 1);
+    if(y + rowLines * 11 > 790){ doc.addPage(); y = 56; }
+    doc.text(c0, cols[0], y);
+    doc.text(c1, cols[1], y);
+    doc.text(c2, cols[2], y);
+    doc.text(c3, cols[3], y);
+    doc.text(c4, cols[4], y);
+    y += rowLines * 11 + 7;
   });
   doc.save("kiu-media-timetable.pdf");
 }
