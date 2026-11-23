@@ -2465,16 +2465,11 @@ function parseSheetCell(lines){
 }
 function sheetClassesToCsv(classes){
   classes.sort(function(a, b){ return SHEET_DAYS.indexOf(a.day) - SHEET_DAYS.indexOf(b.day) || (a.room < b.room ? -1 : a.room > b.room ? 1 : 0) || (a.start < b.start ? -1 : a.start > b.start ? 1 : 0); });
-  var merged = [];
-  classes.forEach(function(c){
-    var p = merged[merged.length - 1];
-    if(p && p.range && c.range && p.day === c.day && p.room === c.room && p.subject === c.subject && p.teacher === c.teacher && p.semester === c.semester && p.prog === c.prog && p.end === c.start){ p.end = c.end; }
-    else merged.push(Object.assign({}, c));
-  });
+  var merged = classes.map(function(c){ return Object.assign({}, c); });
   function q(s){ return '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"'; }
   var lines = ["Program,Semester,Section,Day,Start,End,Subject,Teacher,Classroom"];
   merged.forEach(function(c){
-    var start = c.range ? c.range.start : c.start, end = c.range ? c.range.end : c.end;
+    var start = c.start, end = c.end;
     var progs = c.prog === "BOTH" ? [MC_NAME, DM_NAME] : [c.prog === "DM" ? DM_NAME : MC_NAME];
     progs.forEach(function(pn){ lines.push([pn, c.semester, "", c.day, start, end, c.subject, c.teacher, c.room].map(q).join(",")); });
   });
