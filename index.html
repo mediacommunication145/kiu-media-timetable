@@ -472,8 +472,12 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
     </div>
 
     <div class="card">
-      <h2>📋 Class Report — by CRs</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <h2 style="margin:0">📋 Class Report — by CRs</h2>
+        <button class="btn light small" type="button" id="crReportToggle" style="white-space:nowrap">Show Report ▼</button>
+      </div>
       <p class="sub">Which classes were actually held, as reported by the class CRs. Pick any date to check an old report — reports are kept for 6 months. "Pending" means that class's CR has not reported yet.</p>
+      <div id="crReportWrap" class="hidden">
       <div class="actions no-print" style="margin-bottom:10px">
         <input type="date" id="crDate" aria-label="Report date">
         <button class="btn light" type="button" id="crTodayBtn">Today</button>
@@ -483,6 +487,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
         <button class="btn light" type="button" id="crPrintBtn">🖨 Print</button>
       </div>
       <div id="crReportBox"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -839,6 +844,15 @@ try{
     if(!wrap) return;
     var open = wrap.classList.toggle("hidden") === false;
     tchTgl.textContent = open ? "Hide List ▲" : "Show List ▼";
+  });
+}catch(e){}
+try{
+  var crRTgl = document.getElementById("crReportToggle");
+  if(crRTgl) crRTgl.addEventListener("click", function(){
+    var wrap = document.getElementById("crReportWrap");
+    if(!wrap) return;
+    var open = wrap.classList.toggle("hidden") === false;
+    crRTgl.textContent = open ? "Hide Report ▲" : "Show Report ▼";
   });
 }catch(e){}
 var TT_CACHE_KEY = "kiu_tt_cache_v1";
