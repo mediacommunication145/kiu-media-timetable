@@ -1367,12 +1367,13 @@ function renderCrReport(){
   var semSel = $("crSemSel");
   if(semSel){
     var curSem = semSel.value || "all";
-    var semGroups = crGroups(d.rows);
-    semSel.innerHTML = '<option value="all">All Semesters</option>' + semGroups.map(function(g){ return '<option value="' + esc(g.sem) + '">Semester ' + esc(g.sem) + " only</option>"; }).join("");
-    semSel.value = semGroups.some(function(g){ return g.sem === curSem; }) ? curSem : "all";
+    var semList = ["1", "2", "3", "4", "5", "6", "7", "8"];
+    crGroups(d.rows).forEach(function(g){ if(semList.indexOf(g.sem) < 0) semList.push(g.sem); });
+    semSel.innerHTML = '<option value="all">All Semesters</option>' + semList.map(function(sm){ return '<option value="' + esc(sm) + '">Semester ' + esc(sm) + " only</option>"; }).join("");
+    semSel.value = (curSem === "all" || semList.indexOf(curSem) >= 0) ? curSem : "all";
   }
   if(semSel && semSel.value && semSel.value !== "all") crScopeSemester(d, semSel.value);
-  if(!d.rows.length){ box.innerHTML = '<div class="msg">No classes were scheduled for ' + esc(d.day) + ", " + esc(fmtDate(d.date)) + ".</div>"; return; }
+  if(!d.rows.length){ box.innerHTML = '<div class="msg">' + (d.semesterOnly ? "No Semester " + esc(d.semesterOnly) + " classes were scheduled for " : "No classes were scheduled for ") + esc(d.day) + ", " + esc(fmtDate(d.date)) + ".</div>"; return; }
   var rowHtml = function(r){
     var statusHtml;
     if(r.status === "cancelled") statusHtml = '<span style="color:#a11"><strong>Cancelled by office</strong></span>';
@@ -1466,7 +1467,7 @@ function downloadCrReportPdf(){
   }
   function newPageIfNeeded(h){ if(y + h > 790){ doc.addPage(); y = 56; headerRow(); } }
   if(!d.rows.length){
-    doc.setFontSize(10); doc.text("No classes were scheduled for this date.", 40, y);
+    doc.setFontSize(10); doc.text(d.semesterOnly ? "No Semester " + d.semesterOnly + " classes were scheduled for this date." : "No classes were scheduled for this date.", 40, y);
   }
   crGroups(d.rows).forEach(function(g){
     newPageIfNeeded(46);
