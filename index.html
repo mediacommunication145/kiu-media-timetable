@@ -651,7 +651,10 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
     </div>
 
         <div class="card">
-      <h2>Teachers</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <h2 style="margin:0">Teachers</h2>
+        <button class="btn light small" type="button" id="teachersToggle" style="white-space:nowrap">Show List ▼</button>
+      </div>
       <p class="sub">Add teachers with their details — only the name is required; Designation and Email are optional and can be added later with Edit. An added teacher appears in the "For Teachers" list and in the Teacher field when you add a class — even before they have any class. Changing a teacher's name also updates their existing classes. Teacher details stay private — students never see them.</p>
       <form id="teacherAdminForm">
         <input type="hidden" id="tchId">
@@ -667,7 +670,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
         <p class="msg" id="teacherMsg"></p>
       </form>
       <p class="sub" id="teacherCount"></p>
-      <div class="table-wrap"><table class="rtable"><thead><tr><th>Teacher</th><th>Designation</th><th>Email</th><th>Classes</th><th></th></tr></thead><tbody id="adminTeachers"></tbody></table></div>
+      <div id="teachersWrap" class="hidden"><div class="table-wrap"><table class="rtable"><thead><tr><th>Teacher</th><th>Designation</th><th>Email</th><th>Classes</th><th></th></tr></thead><tbody id="adminTeachers"></tbody></table></div></div>
     </div>
 
     <div class="card">
@@ -827,6 +830,15 @@ try{
     if(!wrap) return;
     var open = wrap.classList.toggle("hidden") === false;
     crTgl.textContent = open ? "Hide Codes ▲" : "Show Codes ▼";
+  });
+}catch(e){}
+try{
+  var tchTgl = document.getElementById("teachersToggle");
+  if(tchTgl) tchTgl.addEventListener("click", function(){
+    var wrap = document.getElementById("teachersWrap");
+    if(!wrap) return;
+    var open = wrap.classList.toggle("hidden") === false;
+    tchTgl.textContent = open ? "Hide List ▲" : "Show List ▼";
   });
 }catch(e){}
 var TT_CACHE_KEY = "kiu_tt_cache_v1";
