@@ -489,7 +489,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
         <button class="btn light" type="button" id="crTodayBtn">Today</button>
         <button class="btn gold" type="button" id="crViewBtn">View Report</button>
         <span class="spacer"></span>
-        <button class="btn light" type="button" id="crDownloadBtn">⬇ Download</button>
+        <button class="btn light" type="button" id="crDownloadBtn">⬇ Download PDF</button>
         <button class="btn light" type="button" id="crPrintBtn">🖨 Print</button>
       </div>
       <div id="crReportBox"></div>
@@ -1415,6 +1415,68 @@ function crReportCsv(dateStr){
   }
   return lines.join("\n");
 }
+function downloadCrReportPdf(){
+  var dateStr = crSelectedDate();
+  var d = crReportData(dateStr);
+  if(!(window.jspdf && window.jspdf.jsPDF)){ window.print(); return; }
+  var doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
+  var W = doc.internal.pageSize.getWidth();
+  doc.setFontSize(14); doc.setTextColor(13, 59, 94);
+  doc.text("Department of Media and Communication", 40, 44);
+  doc.setFontSize(11); doc.setTextColor(60, 60, 60);
+  doc.text("Karakoram International University \u2014 Class Report (by CRs)", 40, 62);
+  doc.setFontSize(10);
+  doc.text(d.day + ", " + fmtDate(d.date) + " \u00B7 Total classes: " + d.counts.total + " \u00B7 Held: " + d.counts.held + " \u00B7 Not held: " + d.counts.notHeld + " \u00B7 Pending: " + d.counts.pending + (d.counts.canc ? " \u00B7 Cancelled by office: " + d.counts.canc : ""), 40, 80);
+  var cols = [40, 190, 232, 322, 372, 452];
+  var y = 104;
+  function headerRow(){
+    doc.setFont(undefined, "bold"); doc.setFontSize(9.5); doc.setTextColor(13, 59, 94);
+    doc.text("Subject", cols[0], y); doc.text("Class", cols[1], y); doc.text("Teacher", cols[2], y); doc.text("Room", cols[3], y); doc.text("Time", cols[4], y); doc.text("CR Report", cols[5], y);
+    doc.setFont(undefined, "normal"); doc.setTextColor(60, 60, 60);
+    y += 6; doc.setDrawColor(180); doc.line(40, y, W - 40, y); y += 15;
+  }
+  function newPageIfNeeded(h){ if(y + h > 790){ doc.addPage(); y = 56; headerRow(); } }
+  if(!d.rows.length){
+    doc.setFontSize(10); doc.text("No classes were scheduled for this date.", 40, y);
+  }
+  crGroups(d.rows).forEach(function(g){
+    newPageIfNeeded(46);
+    doc.setFillColor(232, 238, 252); doc.rect(40, y - 11, W - 80, 17, "F");
+    doc.setFont(undefined, "bold"); doc.setFontSize(10); doc.setTextColor(13, 59, 94);
+    doc.text("Semester " + g.sem + " \u2014 " + g.counts.total + " classes \u00B7 Held: " + g.counts.held + " \u00B7 Not held: " + g.counts.notHeld + " \u00B7 Pending: " + g.counts.pending + (g.counts.canc ? " \u00B7 Cancelled by office: " + g.counts.canc : ""), 44, y + 1);
+    doc.setFont(undefined, "normal"); doc.setTextColor(60, 60, 60); doc.setFontSize(9.5);
+    y += 22; headerRow();
+    g.rows.forEach(function(r){
+      var subj = doc.splitTextToSize(r.subject || "", 145);
+      var teach = doc.splitTextToSize(r.teacher || "", 86);
+      var rep = doc.splitTextToSize(crStatusText(r.status) + (r.note ? " \u2014 " + r.note : ""), 98);
+      var lines = Math.max(subj.length, teach.length, rep.length, 1);
+      newPageIfNeeded(lines * 11 + 4);
+      doc.text(subj, cols[0], y);
+      doc.text(r.classLabel || "", cols[1], y);
+      doc.text(teach, cols[2], y);
+      doc.text(r.room || "", cols[3], y);
+      doc.text(doc.splitTextToSize(r.time || "", 76), cols[4], y);
+      if(r.status === "held") doc.setTextColor(21, 115, 71); else if(r.status === "not_held" || r.status === "cancelled") doc.setTextColor(161, 17, 17); else if(r.status === "pending") doc.setTextColor(138, 101, 8);
+      doc.text(rep, cols[5], y);
+      doc.setTextColor(60, 60, 60);
+      y += lines * 11 + 5;
+    });
+    y += 8;
+  });
+  if(d.teacherRows.length){
+    newPageIfNeeded(40);
+    doc.setFont(undefined, "bold"); doc.setFontSize(11); doc.setTextColor(13, 59, 94);
+    doc.text("By teacher (reported classes)", 40, y); y += 16;
+    doc.setFont(undefined, "normal"); doc.setTextColor(60, 60, 60); doc.setFontSize(9.5);
+    d.teacherRows.forEach(function(t){
+      newPageIfNeeded(14);
+      doc.text(t.teacher, 40, y); doc.text("Held: " + t.held, 330, y); doc.text("Not Held: " + t.notHeld, 410, y);
+      y += 14;
+    });
+  }
+  doc.save("kiu-class-report-" + dateStr + ".pdf");
+}
 function downloadCrReport(){
   var dateStr = crSelectedDate();
   var blob = new Blob(["\ufeff" + crReportCsv(dateStr)], { type: "text/csv;charset=utf-8" });
@@ -1448,7 +1510,7 @@ function printCrReport(){
 $("crDate").addEventListener("change", renderCrReport);
 $("crTodayBtn").addEventListener("click", function(){ $("crDate").value = pktParts().date; renderCrReport(); });
 $("crViewBtn").addEventListener("click", renderCrReport);
-$("crDownloadBtn").addEventListener("click", downloadCrReport);
+$("crDownloadBtn").addEventListener("click", downloadCrReportPdf);
 $("crPrintBtn").addEventListener("click", printCrReport);
 function renderCancelNotice(){
   var box = $("cancelNotice"); if(!box) return;
@@ -1554,6 +1616,22 @@ function clashesForSave(base, classFor, editingId){
     return c.a.ids.some(function(id){ return String(id).indexOf("__cand") === 0; }) || c.b.ids.some(function(id){ return String(id).indexOf("__cand") === 0; });
   });
 }
+function clashSessionKey(e){
+  return [e.day, e.start, e.end || "", e.subject, e.teacher || "", e.room || "", e.date || ""].join("|");
+}
+function clashGroupKeySet(){
+  var set = {};
+  clashPairs(db.entries || []).forEach(function(c){
+    if(c.kinds.some(function(k){ return k.indexOf("same class group") === 0; })){
+      set[clashSessionKey(c.a)] = true;
+      set[clashSessionKey(c.b)] = true;
+    }
+  });
+  return set;
+}
+function clashBadge(e){
+  return clashGroupKeySet()[clashSessionKey(e)] ? ' <span class="badge" style="background:#fde8e8;color:#a11">\u26A0 CLASH</span>' : "";
+}
 function renderClashes(){
   var box = $("clashBox"); if(!box) return;
   var pairs = clashPairs(db.entries || []);
@@ -1631,13 +1709,13 @@ function renderResults(list, title, metaChips){
     return;
   }
   var html = DEPT_HTML + '<div class="result-meta"><strong>'+esc(title)+'</strong>' + (metaChips||"") + '<span class="chip">'+currentResults.length+' class'+(currentResults.length===1?"":"es")+'</span></div>';
-  html += '<p class="sub" style="margin:2px 0 8px"><span class="badge ok">GREEN</span> class will be held &nbsp;<span class="badge bad">RED</span> class is cancelled</p>';
+  html += '<p class="sub" style="margin:2px 0 8px"><span class="badge ok">GREEN</span> class will be held &nbsp;<span class="badge bad">RED</span> class is cancelled' + (currentResults.some(function(x){ return !!clashBadge(x); }) ? ' &nbsp;<span class="badge" style="background:#fde8e8;color:#a11">\u26A0 CLASH</span> two of these classes are at the same time \u2014 please confirm with the department office' : '') + '</p>';
   html += '<div class="table-wrap"><table class="rtable"><thead><tr><th>Day</th><th>Subject</th><th>Teacher</th><th>Classroom</th><th>Time</th></tr></thead><tbody>';
   var lastDay = null, groupByDay = currentResults.some(function(e){ return e.day !== currentResults[0].day; }) || selectedDayCount() !== 1;
   currentResults.forEach(function(e){
     if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
     var st = entryStatusToday(e);
-    html += '<tr class="'+(st === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+(st === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Teacher">'+esc(e.teacher||"—")+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+    html += '<tr class="'+(st === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Teacher">'+esc(e.teacher||"—")+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
   });
   html += '</tbody></table></div>';
   $("results").innerHTML = html;
@@ -1668,7 +1746,7 @@ function renderSheetGrid(list, title){
   var now = pktParts();
   var days = DAYS.filter(function(d){ return d === "Saturday" || currentResults.some(function(e){ return e.day === d; }); });
   var html = DEPT_HTML + '<div class="result-meta"><strong>' + esc(title) + '</strong><span class="chip">' + currentResults.length + ' classes</span></div>';
-  html += '<p class="sub" style="margin:2px 0 8px"><span class="badge ok">GREEN</span> class will be held &nbsp;<span class="badge bad">RED</span> class is cancelled &nbsp;·&nbsp; scroll the sheet sideways on a phone</p>';
+  html += '<p class="sub" style="margin:2px 0 8px"><span class="badge ok">GREEN</span> class will be held &nbsp;<span class="badge bad">RED</span> class is cancelled &nbsp;·&nbsp; scroll the sheet sideways on a phone' + (currentResults.some(function(x){ return !!clashBadge(x); }) ? ' &nbsp;<span class="badge" style="background:#fde8e8;color:#a11">\u26A0 CLASH</span> two of these classes are at the same time \u2014 please confirm with the department office' : '') + '</p>';
   html += '<div class="grid-wrap"><table class="sheet"><thead><tr><th class="day-col">Day</th>';
   slots.forEach(function(s){ html += '<th>' + esc(fmtTime(s.start)) + (s.end ? ' – ' + esc(fmtTime(s.end)) : '') + '</th>'; });
   html += '</tr></thead><tbody>';
@@ -1695,7 +1773,7 @@ function renderSheetGrid(list, title){
         html += '<div class="' + cls + '"><strong>' + esc(e.subject) + '</strong>'
           + '<span class="cell-meta">BS-' + esc(ordSem(e.semester)) + ' ' + esc(g.progs.length > 1 ? g.progs.join("/") : "Only " + g.progs[0]) + (e.section ? ' · Sec ' + esc(e.section) : '') + (e.room ? ' · ' + esc(e.room) : '') + '</span>'
           + (e.teacher ? '<span class="cell-teacher">' + esc(e.teacher) + '</span>' : '')
-          + statusBadge(st) + statusDateTag(e) + extraBadge(e)
+          + statusBadge(st) + statusDateTag(e) + extraBadge(e) + clashBadge(e)
           + (st === "cancelled" && todayCancelReason(e) ? '<span class="hint" style="display:block">Reason: ' + esc(todayCancelReason(e)) + '</span>' : '')
           + '</div>';
       });
@@ -2300,7 +2378,7 @@ function renderTeacherResults(list, title, metaChips){
     if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
     var cls = (e.program||"") + " — Sem " + (e.semester||"") + (e.section ? " Sec " + e.section : "");
     var st2 = entryStatusToday(e);
-    html += '<tr class="'+(st2 === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st2)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+(st2 === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Class">'+esc(cls)+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+    html += '<tr class="'+(st2 === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st2)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st2 === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Class">'+esc(cls)+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
   });
   html += '</tbody></table></div>';
   $("results").innerHTML = html;
