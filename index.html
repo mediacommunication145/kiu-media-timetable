@@ -1989,7 +1989,13 @@ function renderAdminGrid(){
     slots.forEach(function(s){
       var cell = entries.filter(function(e){ return e.day === day && e.start === s.start && (e.end || "") === s.end; });
       html += '<td>';
+      var cellGroups = {};
       cell.forEach(function(e){
+        var gk = [e.subject, e.teacher || "", e.semester, e.section || "", e.room || "", e.date || ""].join("|");
+        if(!cellGroups[gk]) cellGroups[gk] = e;
+      });
+      Object.keys(cellGroups).forEach(function(gk){
+        var e = cellGroups[gk];
         var st = entryStatusToday(e);
         var cls = st === "cancelled" ? "blk cancelled" : (st === "confirmed" ? "blk confirmed" : "blk");
         if(isExtra(e) && e.date < pktParts().date) cls += " past";
@@ -2049,9 +2055,11 @@ $("eDate").addEventListener("change", function(){ if($("eDate").value){ $("eExtr
 $("geDelete").addEventListener("click", async function(){
   var id = $("geId").value; if(!id) return;
   if(!confirm("Delete this class entry? It will be removed from the timetable for everyone.")) return;
+  var delEntry = (db.entries || []).find(function(x){ return x.id === id; });
+  var delSibs = delEntry ? siblingOf(delEntry) : [{ id: id }];
   try{
-    if(serverMode){ await api("/api/admin/entries/" + encodeURIComponent(id), "DELETE"); await reloadFromServer(); await loadAdminData(); }
-    else { db.entries = db.entries.filter(function(x){ return x.id !== id; }); saveLocal(); }
+    if(serverMode){ for(var di = 0; di < delSibs.length; di++) await api("/api/admin/entries/" + encodeURIComponent(delSibs[di].id), "DELETE"); await reloadFromServer(); await loadAdminData(); }
+    else { var delIds = delSibs.map(function(x){ return x.id; }); db.entries = db.entries.filter(function(x){ return delIds.indexOf(x.id) < 0; }); saveLocal(); }
     closeCellEditor(); refreshAfterChange();
     $("gridMsg").innerHTML = '<div class="msg ok">Class deleted from the sheet.</div>';
   }catch(err){ $("geMsg").innerHTML = '<div class="msg err">' + esc(err.message) + '</div>'; }
