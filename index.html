@@ -564,7 +564,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
 
     <div class="card">
       <h2>Import from Excel / CSV / PDF / Word</h2>
-      <p class="sub">Upload your Excel sheet (.xlsx), a CSV, a PDF, or a Word file (.docx). For PDF and Word, the timetable must be in a proper table with these columns: <strong>Program, Semester, Section, Day, Start, End, Subject, Teacher, Classroom</strong> (Start/End like 09:00 and 10:30, or a single Time column like 09:00-10:30).</p>
+      <p class="sub">Upload your Excel sheet (.xlsx), a CSV, a PDF, or a Word file (.docx). The classes from the file REPLACE the whole current timetable — the old classes are removed. For PDF and Word, the timetable must be in a proper table with these columns: <strong>Program, Semester, Section, Day, Start, End, Subject, Teacher, Classroom</strong> (Start/End like 09:00 and 10:30, or a single Time column like 09:00-10:30).</p>
       <div class="actions no-print">
         <input type="file" id="csvFile" accept=".csv,.xlsx,.xls,.pdf,.docx,text/csv">
         <button class="btn" type="button" id="importBtn">Import File</button>
@@ -2022,13 +2022,14 @@ $("templateBtn").addEventListener("click", function(){
 $("importBtn").addEventListener("click", async function(){
   var f = $("csvFile").files[0];
   if(!f){ $("importMsg").innerHTML = '<div class="msg err">Please choose a file first.</div>'; return; }
+  if(!confirm("This will REPLACE the whole timetable: all current classes will be removed and replaced with the classes from this file. Continue?")) return;
   var text;
   try{ text = await fileToCsvText(f); }catch(e){ $("importMsg").innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; return; }
   try{
     if(serverMode){
-      var r = await api("/api/admin/import","POST",{csv:text});
+      var r = await api("/api/admin/import","POST",{csv:text, replace:true});
       await reloadFromServer();
-      $("importMsg").innerHTML = '<div class="msg '+(r.added?"ok":"err")+'">Imported '+r.added+' classes. Skipped '+r.skipped+'.'+(r.errors&&r.errors.length? "<br>"+r.errors.map(esc).join("<br>"):"")+'</div>';
+      $("importMsg").innerHTML = '<div class="msg '+(r.added?"ok":"err")+'">'+(r.added? "Timetable replaced — imported "+r.added+" classes. Skipped "+r.skipped+"." : "Nothing was imported.")+(r.errors&&r.errors.length? "<br>"+r.errors.map(esc).join("<br>"):"")+'</div>';
     } else {
       // Standalone mode: same rules as the server importer
       var rows = parseCsvClient(text);
@@ -2036,7 +2037,7 @@ $("importBtn").addEventListener("click", async function(){
       var head = rows[0].map(function(h){ return String(h).trim().toLowerCase(); });
       function idx(names){ for(var k=0;k<names.length;k++){ var j=head.indexOf(names[k]); if(j>=0) return j; } return -1; }
       var ci = { program:idx(["program","degree program","degree","programme"]), semester:idx(["semester","sem"]), section:idx(["section"]), day:idx(["day"]), start:idx(["start","start time","from","time from"]), end:idx(["end","end time","to","time to"]), time:idx(["time","timing","class time"]), subject:idx(["subject","course","course name"]), teacher:idx(["teacher","instructor","faculty"]), room:idx(["classroom","room","venue"]) };
-      var added=0, skipped=0, errs=[];
+      var added=0, skipped=0, errs=[], newEntries=[];
       for(var r2=1;r2<rows.length;r2++){
         var row=rows[r2];
         function get(i){ return i>=0 && row[i]!==undefined ? String(row[i]).trim() : ""; }
@@ -2048,10 +2049,11 @@ $("importBtn").addEventListener("click", async function(){
         if(!e.program || !e.semester || !e.day || !e.start || !e.subject){ skipped++; errs.push("Row "+(r2+1)+": missing Program, Semester, Day, Start time or Subject — skipped."); continue; }
         var prog = db.programs.find(function(p){ return p.name.toLowerCase()===e.program.toLowerCase(); });
         if(prog) e.program = prog.name;
-        db.entries.push(e); added++;
+        newEntries.push(e); added++;
       }
+      if(added){ db.entries = newEntries; db.cancellations = []; db.confirmations = []; }
       saveLocal(); refreshAfterChange();
-      $("importMsg").innerHTML = '<div class="msg '+(added?"ok":"err")+'">Imported '+added+' classes. Skipped '+skipped+'.'+(errs.length? "<br>"+errs.slice(0,20).map(esc).join("<br>"):"")+'</div>';
+      $("importMsg").innerHTML = '<div class="msg '+(added?"ok":"err")+'">'+(added? "Timetable replaced — imported "+added+" classes. Skipped "+skipped+"." : "Nothing was imported, so the current timetable was kept.")+(errs.length? "<br>"+errs.slice(0,20).map(esc).join("<br>"):"")+'</div>';
     }
   }catch(e){ $("importMsg").innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
 });
