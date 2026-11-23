@@ -2336,7 +2336,7 @@ async function fileToCsvText(file){
     return window.XLSX.utils.sheet_to_csv(ws);
   }
   if(name.endsWith(".pdf")){
-    return pdfToCsvText(file);
+    try{ return await pdfToCsvText(file); }catch(e1){ return pdfSheetToCsvText(file); }
   }
   if(name.endsWith(".docx")){
     if(!window.mammoth) await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
@@ -2345,6 +2345,8 @@ async function fileToCsvText(file){
     var pdoc = new DOMParser().parseFromString(conv.value, "text/html");
     var tables = pdoc.querySelectorAll("table");
     if(!tables.length) throw new Error("No table found in this Word file. Please put the timetable in a table, with the column headings in the first row.");
+    var gridCsv = docxSheetToCsvText(pdoc);
+    if(gridCsv) return gridCsv;
     var lines = [];
     tables.forEach(function(tb){
       tb.querySelectorAll("tr").forEach(function(tr){
@@ -2420,6 +2422,181 @@ async function pdfToCsvText(file){
   }
   if(!outLines.length) throw new Error("No timetable table found in this PDF. The first row of the table must be the column headings (Program, Semester, Day, Start, End, Subject, Teacher, Classroom), and the text must be selectable — a scanned photo PDF cannot be read.");
   return outLines.join("\n");
+}
+/* ---------- Sheet-grid format: one room per page, slot columns, day rows ----------
+   Cell = subject lines, then a "BS <semester> | MC / DM / MC/DM" line, then the teacher. */
+var SHEET_DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+var ROMAN_SEM = { I:1, II:2, III:3, IV:4, V:5, VI:6, VII:7, VIII:8 };
+var MC_NAME = "BS Media and Communication Studies", DM_NAME = "BS Digital Media and Marketing";
+function sheetTime24(t){
+  var m = String(t || "").match(/(\d{1,2}):(\d{2})/); if(!m) return "";
+  var h = parseInt(m[1], 10); if(h >= 1 && h <= 8) h += 12;
+  return (h < 10 ? "0" : "") + h + ":" + m[2];
+}
+function cleanSheetText(s){
+  return String(s || "").replace(/\s+/g, " ").replace(/\s+-\s+/g, "-").replace(/\s+\./g, ".").replace(/\.([A-Za-z])/g, ". $1").replace(/\s+/g, " ").trim();
+}
+function parseSheetCell(lines){
+  var bsIdx = -1, sem = "", prog = "";
+  for(var i=0; i<lines.length; i++){
+    var m = lines[i].match(/BS\s*(VIII|VII|VI|IV|V|III|II|I)\b/i);
+    if(m){
+      bsIdx = i; sem = ROMAN_SEM[m[1].toUpperCase()];
+      var tag = lines[i].toUpperCase();
+      if(/MC\s*\/\s*DM|DM\s*\/\s*MC/.test(tag)) prog = "BOTH"; else if(/\bDM\b/.test(tag)) prog = "DM"; else if(/\bMC\b/.test(tag)) prog = "MC";
+      break;
+    }
+  }
+  if(bsIdx < 0 || !prog) return null;
+  var subject = cleanSheetText(lines.slice(0, bsIdx).join(" ")).replace(/^\d{1,2}:\d{2}\s*[-–—]\s*\d{1,2}:\d{2}\s+/, "");
+  var teacher = cleanSheetText(lines.slice(bsIdx + 1).join(" "));
+  if(!subject) return null;
+  var tm = subject.match(/\(\s*(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?\s*\)/i);
+  var range = null;
+  if(tm){
+    var sh = parseInt(tm[1], 10), eh = parseInt(tm[3], 10);
+    if(tm[5] && tm[5].toUpperCase() === "PM"){ if(sh < 12) sh += 12; if(eh < 12) eh += 12; }
+    else { if(sh >= 1 && sh <= 8) sh += 12; if(eh >= 1 && eh <= 8) eh += 12; }
+    range = { start: (sh < 10 ? "0" : "") + sh + ":" + (tm[2] || "00"), end: (eh < 10 ? "0" : "") + eh + ":" + (tm[4] || "00") };
+  }
+  return { semester: sem, prog: prog, subject: subject, teacher: teacher, range: range };
+}
+function sheetClassesToCsv(classes){
+  classes.sort(function(a, b){ return SHEET_DAYS.indexOf(a.day) - SHEET_DAYS.indexOf(b.day) || (a.room < b.room ? -1 : a.room > b.room ? 1 : 0) || (a.start < b.start ? -1 : a.start > b.start ? 1 : 0); });
+  var merged = [];
+  classes.forEach(function(c){
+    var p = merged[merged.length - 1];
+    if(p && p.range && c.range && p.day === c.day && p.room === c.room && p.subject === c.subject && p.teacher === c.teacher && p.semester === c.semester && p.prog === c.prog && p.end === c.start){ p.end = c.end; }
+    else merged.push(Object.assign({}, c));
+  });
+  function q(s){ return '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"'; }
+  var lines = ["Program,Semester,Section,Day,Start,End,Subject,Teacher,Classroom"];
+  merged.forEach(function(c){
+    var start = c.range ? c.range.start : c.start, end = c.range ? c.range.end : c.end;
+    var progs = c.prog === "BOTH" ? [MC_NAME, DM_NAME] : [c.prog === "DM" ? DM_NAME : MC_NAME];
+    progs.forEach(function(pn){ lines.push([pn, c.semester, "", c.day, start, end, c.subject, c.teacher, c.room].map(q).join(",")); });
+  });
+  return lines.join("\n");
+}
+async function pdfSheetToCsvText(file){
+  if(!window.pdfjsLib) await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  var buf = await file.arrayBuffer();
+  var doc = await window.pdfjsLib.getDocument({data:buf}).promise;
+  var classes = [];
+  for(var pno=1; pno<=doc.numPages; pno++){
+    var page = await doc.getPage(pno);
+    var tc = await page.getTextContent();
+    var items = [];
+    tc.items.forEach(function(it){ var str = (it.str || "").trim(); if(str) items.push({ x: it.transform[4], y: it.transform[5], w: it.width || 0, str: str }); });
+    if(!items.length) continue;
+    var roomM = items.map(function(o){ return o.str; }).join(" ").match(/\(\s*Room\s*(\d+)\s*\)/i);
+    var room = roomM ? "Room " + roomM[1] : "";
+    var linesArr = [];
+    items.slice().sort(function(a,b){ return b.y - a.y || a.x - b.x; }).forEach(function(o){
+      var last = linesArr[linesArr.length - 1];
+      if(last && Math.abs(last.y - o.y) <= 3) last.items.push(o); else linesArr.push({ y: o.y, items: [o] });
+    });
+    var header = null;
+    linesArr.forEach(function(L){
+      if(header) return;
+      var toks = L.items.filter(function(o){ return /^\d{1,2}:\d{2}$/.test(o.str); }).sort(function(a,b){ return a.x - b.x; });
+      var hasDay = L.items.some(function(o){ return o.str === "Day"; });
+      if(hasDay && toks.length >= 6 && toks.length % 2 === 0){
+        var slots = [];
+        for(var k=0; k<toks.length; k += 2){
+          var sTok = toks[k], eTok = toks[k + 1];
+          slots.push({ start: sTok.str, end: eTok.str, center: (sTok.x + (sTok.w || 0) + eTok.x + (eTok.w || 0)) / 2, startX: sTok.x });
+        }
+        header = { y: L.y, slots: slots };
+      }
+    });
+    if(!header) continue;
+    var labels = [];
+    items.forEach(function(o){ if(SHEET_DAYS.indexOf(o.str) >= 0) labels.push({ day: o.str, y: o.y }); });
+    labels.sort(function(a,b){ return b.y - a.y; });
+    if(!labels.length) continue;
+    labels.forEach(function(lab, li){
+      var topY = li === 0 ? header.y + 8 : (labels[li - 1].y + lab.y) / 2;
+      var botY = li === labels.length - 1 ? -Infinity : (lab.y + labels[li + 1].y) / 2;
+      var cells = {};
+      items.forEach(function(o){
+        if(o.y > topY || o.y <= botY) return;
+        if(o.x + o.w < header.slots[0].startX - 8) return;
+        var cx = o.x + o.w / 2, best = 0, bd = Infinity;
+        header.slots.forEach(function(s, si){ var d = Math.abs(cx - s.center); if(d < bd){ bd = d; best = si; } });
+        (cells[best] = cells[best] || []).push(o);
+      });
+      Object.keys(cells).forEach(function(si){
+        var cellItems = cells[si].slice().sort(function(a,b){ return b.y - a.y || a.x - b.x; });
+        var cellLines = [];
+        cellItems.forEach(function(o){
+          var last = cellLines[cellLines.length - 1];
+          if(last && Math.abs(last.y - o.y) <= 3) last.parts.push(o.str); else cellLines.push({ y: o.y, parts: [o.str] });
+        });
+        var parsed = parseSheetCell(cellLines.map(function(L){ return L.parts.join(" "); }));
+        if(parsed) classes.push({ day: lab.day, start: sheetTime24(header.slots[si].start), end: sheetTime24(header.slots[si].end), subject: parsed.subject, teacher: parsed.teacher, room: room, semester: parsed.semester, prog: parsed.prog, range: parsed.range });
+      });
+    });
+  }
+  if(!classes.length) throw new Error("No timetable could be read from this PDF. It must have the column headings (Program, Semester, Day, Start, End, Subject, Teacher, Classroom), or be a room sheet with Day rows and time-slot columns — and the text must be selectable, not a scanned photo.");
+  return sheetClassesToCsv(classes);
+}
+function docxSheetToCsvText(pdoc){
+  var tables = pdoc.querySelectorAll("table");
+  if(!tables.length) return null;
+  function cellLines(td){
+    var ps = td.querySelectorAll("p");
+    var lines = [];
+    if(ps.length){ ps.forEach(function(p){ var s = p.textContent.trim(); if(s) lines.push(s); }); }
+    if(!lines.length){ var s2 = td.textContent.trim(); if(s2) lines = [s2]; }
+    return lines;
+  }
+  function slotOf(text){
+    var m = String(text || "").match(/(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})/);
+    return m ? { start: m[1], end: m[2] } : null;
+  }
+  var first = tables[0];
+  var frows = first.querySelectorAll("tr");
+  if(!frows.length) return null;
+  var fcells = frows[0].querySelectorAll("th,td");
+  if(fcells.length < 3) return null;
+  if(fcells[0].textContent.trim().toLowerCase() !== "day" || !slotOf(fcells[1].textContent)) return null;
+  var roomByTable = {};
+  var currentRoom = "";
+  pdoc.body.querySelectorAll("h1,h2,h3,h4,h5,p,table").forEach(function(el){
+    if(el.tagName === "TABLE"){ roomByTable[Array.prototype.indexOf.call(tables, el)] = currentRoom; return; }
+    var m = el.textContent.match(/\(\s*Room\s*(\d+)\s*\)/i);
+    if(m) currentRoom = "Room " + m[1];
+  });
+  var classes = [];
+  tables.forEach(function(tb, ti){
+    var rows = tb.querySelectorAll("tr");
+    if(!rows.length) return;
+    var headCells = rows[0].querySelectorAll("th,td");
+    var slots = [];
+    var grid = headCells.length >= 3 && headCells[0].textContent.trim().toLowerCase() === "day";
+    if(!grid) return;
+    for(var ci=1; ci<headCells.length; ci++) slots.push(slotOf(headCells[ci].textContent));
+    var room = roomByTable[ti] || "";
+    if(!room){ var mm = (tb.textContent || "").match(/Room\s*(\d+)/i); }
+    for(var ri=1; ri<rows.length; ri++){
+      var cells = rows[ri].querySelectorAll("th,td");
+      if(!cells.length) continue;
+      var day = cells[0].textContent.trim();
+      if(SHEET_DAYS.indexOf(day) < 0) continue;
+      var colIdx = 0;
+      for(var cj=1; cj<cells.length; cj++){
+        var span = parseInt(cells[cj].getAttribute("colspan") || "1", 10) || 1;
+        var slot = slots[colIdx];
+        var parsed = parseSheetCell(cellLines(cells[cj]));
+        if(parsed && slot) classes.push({ day: day, start: sheetTime24(slot.start), end: sheetTime24(slot.end), subject: parsed.subject, teacher: parsed.teacher, room: room, semester: parsed.semester, prog: parsed.prog, range: parsed.range });
+        colIdx += span;
+      }
+    }
+  });
+  if(!classes.length) return null;
+  return sheetClassesToCsv(classes);
 }
 function sheetSay(html, ok){ $("sheetMsg").innerHTML = html ? '<div class="msg '+(ok?"ok":"err")+'">'+html+'</div>' : ""; }
 function localSheets(){ try{ return JSON.parse(localStorage.getItem(SHEETS_LS_KEY) || "[]"); }catch(e){ return []; } }
