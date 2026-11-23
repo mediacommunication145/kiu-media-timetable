@@ -461,6 +461,12 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
       <div id="annCurrent" style="margin-top:12px"></div>
     </div>
 
+    <div class="card" id="clashCard">
+      <h2>⚠ Timetable Clashes</h2>
+      <p class="sub">If two classes fall at the same time for the same class group, the same classroom or the same teacher, they are listed here so the office knows right away. The same warning also appears when a class is saved.</p>
+      <div id="clashBox"></div>
+    </div>
+
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
         <h2 style="margin:0">🎓 CR Access — Class Representative Codes</h2>
@@ -1479,7 +1485,60 @@ function progNameFor(short){
   return pr ? pr.name : "";
 }
 function classForOf(e){ return combinedLabel(e) ? "BOTH" : progShort(e.program); }
+/* ---------- Clash detection ---------- */
+function clashSessions(entries){
+  var map = {}, out = [];
+  (entries || []).forEach(function(e){
+    var k = [e.day, e.start, e.end || "", e.subject, e.teacher || "", e.room || "", e.date || ""].join("|");
+    if(!map[k]){ map[k] = { day: e.day, start: e.start, end: e.end || "", subject: e.subject, teacher: e.teacher || "", room: e.room || "", date: e.date || "", groups: [], ids: [] }; out.push(map[k]); }
+    map[k].groups.push(progShort(e.program) + " Sem " + e.semester);
+    map[k].ids.push(e.id);
+  });
+  return out;
+}
+function clashPairs(entries){
+  var S = clashSessions(entries), out = [];
+  for(var i = 0; i < S.length; i++) for(var j = i + 1; j < S.length; j++){
+    var a = S[i], b = S[j];
+    if(a.day !== b.day) continue;
+    if(a.date && b.date && a.date !== b.date) continue;
+    if(!(a.start < (b.end || b.start) && b.start < (a.end || a.start))) continue;
+    var shared = a.groups.filter(function(g){ return b.groups.indexOf(g) >= 0; });
+    var kinds = [];
+    if(shared.length) kinds.push("same class group (" + shared.join(", ") + ")");
+    if(a.room && a.room === b.room) kinds.push("same classroom (" + a.room + ")");
+    if(a.teacher && a.teacher === b.teacher) kinds.push("same teacher (" + a.teacher + ")");
+    if(kinds.length) out.push({ a: a, b: b, kinds: kinds });
+  }
+  return out;
+}
+function clashText(c){
+  var when = c.a.day + " " + fmtTime(c.a.start) + "-" + fmtTime(c.a.end || c.a.start);
+  if(c.a.date || c.b.date) when += " (extra class, " + (c.a.date || c.b.date) + ")";
+  return when + ": \u201C" + c.a.subject + "\u201D (" + c.a.groups.join(" + ") + ", " + (c.a.room || "no room") + ") clashes with \u201C" + c.b.subject + "\u201D (" + c.b.groups.join(" + ") + ", " + (c.b.room || "no room") + ") - " + c.kinds.join("; ") + ".";
+}
+function clashesForSave(base, classFor, editingId){
+  var targetNames = (classFor === "BOTH" ? ["MC", "DM"] : [classFor]).map(progNameFor).filter(Boolean);
+  if(!targetNames.length) return [];
+  var rest = (db.entries || []).slice();
+  if(editingId){
+    var old = rest.find(function(x){ return x.id === editingId; });
+    if(old){ var sibIds = siblingOf(old).map(function(x){ return x.id; }); rest = rest.filter(function(x){ return sibIds.indexOf(x.id) < 0; }); }
+  }
+  var cand = targetNames.map(function(nm, i){ return Object.assign({}, base, { program: nm, id: "__cand" + i }); });
+  return clashPairs(rest.concat(cand)).filter(function(c){
+    return c.a.ids.some(function(id){ return String(id).indexOf("__cand") === 0; }) || c.b.ids.some(function(id){ return String(id).indexOf("__cand") === 0; });
+  });
+}
+function renderClashes(){
+  var box = $("clashBox"); if(!box) return;
+  var pairs = clashPairs(db.entries || []);
+  if(!pairs.length){ box.innerHTML = '<div class="msg ok">No clashes - every class has its own time.</div>'; return; }
+  box.innerHTML = pairs.map(function(c){ return '<div class="msg err" style="margin-bottom:8px">\u26A0 ' + esc(clashText(c)) + '</div>'; }).join("");
+}
 async function saveClassFor(base, classFor, editingId){
+  var saveClashes = clashesForSave(base, classFor, editingId);
+  if(saveClashes.length && !confirm("\u26A0 TIMETABLE CLASH\n\n" + saveClashes.map(clashText).join("\n\n") + "\n\nSave this class anyway?")) throw new Error("Save stopped - the clash was not resolved.");
   var targets = classFor === "BOTH" ? ["MC", "DM"] : [classFor];
   var targetNames = targets.map(progNameFor).filter(Boolean);
   if(!targetNames.length) throw new Error("Programs are not loaded yet.");
@@ -1706,14 +1765,14 @@ $("tPdfBtn").addEventListener("click", pdfCurrent);
 /* ---------- View switching ---------- */
 function showStudent(){ $("studentView").classList.remove("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("crView").classList.add("hidden"); $("adminToggleBtn").textContent = "Admin Login"; applyPortalState(); }
 function showLogin(){ $("studentView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("crView").classList.add("hidden"); $("loginView").classList.remove("hidden"); }
-function showAdmin(){ $("studentView").classList.add("hidden"); $("loginView").classList.add("hidden"); $("crView").classList.add("hidden"); $("adminView").classList.remove("hidden"); $("adminToggleBtn").textContent = "Student View"; renderAdminGrid(); renderTeachers(); renderPendingSheets(); renderAnnouncementAdmin(); renderCrCodes(); renderCrReport(); if(serverMode) loadAdminData(); }
+function showAdmin(){ $("studentView").classList.add("hidden"); $("loginView").classList.add("hidden"); $("crView").classList.add("hidden"); $("adminView").classList.remove("hidden"); $("adminToggleBtn").textContent = "Student View"; renderAdminGrid(); renderTeachers(); renderPendingSheets(); renderAnnouncementAdmin(); renderCrCodes(); renderCrReport(); renderClashes(); if(serverMode) loadAdminData(); }
 async function loadAdminData(){
   try{
     var d = await api("/api/admin/data");
     db.teacherRecords = d.teacherRecords || [];
     db.cancellations = d.cancellations || db.cancellations || []; db.confirmations = d.confirmations || [];
     db.sheets = d.sheets || []; if("announcement" in d) db.announcement = d.announcement; db.crCodes = d.crCodes || {}; db.crReports = d.crReports || []; renderPendingSheets(); renderAnnouncementAdmin(); renderCrCodes(); renderCrReport();
-    renderTeachers(); renderAdminGrid();
+    renderTeachers(); renderAdminGrid(); renderClashes();
   }catch(e){}
 }
 var adminOpen = false;
@@ -1802,7 +1861,7 @@ async function uncancelEntryToday(id){
   }catch(err){ alert(err.message); }
 }
 function refreshAfterChange(){
-  catalogFromEntries(); fillSectionFilter(); fillDatalists(); renderPrograms(); renderAdminGrid(); fillTeacherSelect(); renderTeachers(); renderCancelNotice(); renderAnnouncementAdmin(); renderCrCodes(); renderCrReport();
+  catalogFromEntries(); fillSectionFilter(); fillDatalists(); renderPrograms(); renderAdminGrid(); fillTeacherSelect(); renderTeachers(); renderCancelNotice(); renderAnnouncementAdmin(); renderCrCodes(); renderCrReport(); renderClashes();
   if(!$("studentView").classList.contains("hidden")) showPromptState();
 }
 async function reloadFromServer(){
