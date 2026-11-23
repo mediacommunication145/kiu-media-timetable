@@ -462,10 +462,13 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
     </div>
 
     <div class="card">
-      <h2>🎓 CR Access — Class Representative Codes</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <h2 style="margin:0">🎓 CR Access — Class Representative Codes</h2>
+        <button class="btn light small" type="button" id="crCodesToggle" style="white-space:nowrap">Show Codes ▼</button>
+      </div>
       <p class="sub">Each class (program + semester) has one CR code. Give the code to that class's CR (Class Representative) — with it, the CR logs in from the "CR Login" button and marks whether today's classes were held or not. Making a new code stops the old one from working.</p>
       <div id="crAdminMsg"></div>
-      <div id="crCodesBox"></div>
+      <div id="crCodesWrap" class="hidden"><div id="crCodesBox"></div></div>
     </div>
 
     <div class="card">
@@ -815,6 +818,15 @@ try{
       b.textContent = show ? "Hide" : "Show";
       try{ inp.focus(); }catch(e){}
     });
+  });
+}catch(e){}
+try{
+  var crTgl = document.getElementById("crCodesToggle");
+  if(crTgl) crTgl.addEventListener("click", function(){
+    var wrap = document.getElementById("crCodesWrap");
+    if(!wrap) return;
+    var open = wrap.classList.toggle("hidden") === false;
+    crTgl.textContent = open ? "Hide Codes ▲" : "Show Codes ▼";
   });
 }catch(e){}
 var TT_CACHE_KEY = "kiu_tt_cache_v1";
