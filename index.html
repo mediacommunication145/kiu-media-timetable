@@ -131,6 +131,11 @@ tr:nth-child(even) td{background:#f7fafc}
 .rtable tr.row-cancelled td{background:#fdf1f1}
 .rtable tr.row-cancelled td:first-child{box-shadow:inset 4px 0 0 #d43a3a}
 .badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:700;margin-left:6px;vertical-align:middle;white-space:nowrap}
+@keyframes clashPulse{from{background-color:rgba(220,38,38,.08);box-shadow:inset 0 0 0 1px rgba(220,38,38,.35)}to{background-color:rgba(220,38,38,.30);box-shadow:inset 0 0 0 2px rgba(220,38,38,.85)}}
+.clash-hit{animation:clashPulse 1.1s ease-in-out infinite alternate}
+tr.clash-row td{animation:clashPulse 1.1s ease-in-out infinite alternate}
+@keyframes clashBadgePulse{from{opacity:.4}to{opacity:1}}
+.clash-pulse{animation:clashBadgePulse 1.1s ease-in-out infinite alternate}
 .badge.ok{background:#dff5e5;color:#157347}
 .badge.bad{background:#fbe0e0;color:#b02a2a}
 .badge.wait{background:#fdf3d7;color:#8a6d1a}
@@ -1661,14 +1666,22 @@ function clashGroupKeySet(){
   });
   return set;
 }
+function clashAnyKeySet(){
+  var set = {};
+  clashPairs(db.entries || []).forEach(function(c){
+    set[clashSessionKey(c.a)] = true;
+    set[clashSessionKey(c.b)] = true;
+  });
+  return set;
+}
 function clashBadge(e){
-  return clashGroupKeySet()[clashSessionKey(e)] ? ' <span class="badge" style="background:#fde8e8;color:#a11">\u26A0 CLASH</span>' : "";
+  return clashGroupKeySet()[clashSessionKey(e)] ? ' <span class="badge clash-pulse" style="background:#fde8e8;color:#a11">\u26A0 CLASH</span>' : "";
 }
 function renderClashes(){
   var box = $("clashBox"); if(!box) return;
   var pairs = clashPairs(db.entries || []);
   if(!pairs.length){ box.innerHTML = '<div class="msg ok">No clashes - every class has its own time.</div>'; return; }
-  box.innerHTML = pairs.map(function(c){ return '<div class="msg err" style="margin-bottom:8px">\u26A0 ' + esc(clashText(c)) + '</div>'; }).join("");
+  box.innerHTML = pairs.map(function(c){ return '<div class="msg err clash-hit" style="margin-bottom:8px">\u26A0 ' + esc(clashText(c)) + '</div>'; }).join("");
 }
 async function saveClassFor(base, classFor, editingId){
   var saveClashes = clashesForSave(base, classFor, editingId);
@@ -1747,7 +1760,7 @@ function renderResults(list, title, metaChips){
   currentResults.forEach(function(e){
     if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
     var st = entryStatusToday(e);
-    html += '<tr class="'+(st === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Teacher">'+esc(e.teacher||"—")+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+    html += '<tr class="'+(st === "cancelled" ? "row-cancelled" : "row-on")+(clashBadge(e) ? " clash-row" : "")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Teacher">'+esc(e.teacher||"—")+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
   });
   html += '</tbody></table></div>';
   $("results").innerHTML = html;
@@ -1800,12 +1813,13 @@ function renderSheetGrid(list, title){
         var anyCancelled = cell.some(function(x){ return x.subject === e.subject && entryStatusToday(x) === "cancelled"; });
         if(anyCancelled) st = "cancelled";
         var cls = st === "cancelled" ? "cell-class cancelled" : (st === "confirmed" ? "cell-class confirmed" : "cell-class");
+        var cb = clashBadge(e); if(cb) cls += " clash-hit";
         var order = { MC: 0, DM: 1 };
         g.progs.sort(function(a, b){ return (order[a] === undefined ? 2 : order[a]) - (order[b] === undefined ? 2 : order[b]); });
         html += '<div class="' + cls + '"><strong>' + esc(e.subject) + '</strong>'
           + '<span class="cell-meta">BS-' + esc(ordSem(e.semester)) + ' ' + esc(g.progs.length > 1 ? g.progs.join("/") : "Only " + g.progs[0]) + (e.section ? ' · Sec ' + esc(e.section) : '') + (e.room ? ' · ' + esc(e.room) : '') + '</span>'
           + (e.teacher ? '<span class="cell-teacher">' + esc(e.teacher) + '</span>' : '')
-          + statusBadge(st) + statusDateTag(e) + extraBadge(e) + clashBadge(e)
+          + statusBadge(st) + statusDateTag(e) + extraBadge(e) + cb
           + (st === "cancelled" && todayCancelReason(e) ? '<span class="hint" style="display:block">Reason: ' + esc(todayCancelReason(e)) + '</span>' : '')
           + '</div>';
       });
@@ -2014,6 +2028,7 @@ async function reloadFromServer(){
 }
 /* ---------- Admin: Excel-style grid editor ---------- */
 function renderAdminGrid(){
+  var clashSet = clashAnyKeySet();
   var box = $("adminGrid"); if(!box) return;
   var entries = db.entries || [];
   var slots = slotList(entries);
@@ -2038,6 +2053,7 @@ function renderAdminGrid(){
         var st = entryStatusToday(e);
         var cls = st === "cancelled" ? "blk cancelled" : (st === "confirmed" ? "blk confirmed" : "blk");
         if(isExtra(e) && e.date < pktParts().date) cls += " past";
+        if(clashSet[clashSessionKey(e)]) cls += " clash-hit";
         html += '<button type="button" class="' + cls + '" data-geid="' + esc(e.id) + '"><strong>' + esc(e.subject) + '</strong>'
           + '<span class="cell-meta">BS-' + esc(ordSem(e.semester)) + ' ' + esc(combinedLabel(e) || ("Only " + progShort(e.program))) + (e.section ? ' · Sec ' + esc(e.section) : '') + '</span>'
           + (e.teacher ? '<span class="cell-teacher">' + esc(e.teacher) + '</span>' : '')
@@ -2425,7 +2441,7 @@ function renderTeacherResults(list, title, metaChips){
     if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
     var cls = (e.program||"") + " — Sem " + (e.semester||"") + (e.section ? " Sec " + e.section : "");
     var st2 = entryStatusToday(e);
-    html += '<tr class="'+(st2 === "cancelled" ? "row-cancelled" : "row-on")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st2)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st2 === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Class">'+esc(cls)+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+    html += '<tr class="'+(st2 === "cancelled" ? "row-cancelled" : "row-on")+(clashBadge(e) ? " clash-row" : "")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st2)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st2 === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Class">'+esc(cls)+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
   });
   html += '</tbody></table></div>';
   $("results").innerHTML = html;
