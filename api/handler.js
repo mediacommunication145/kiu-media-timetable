@@ -289,7 +289,7 @@ function parseCsv(text) {
   if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
   return rows.filter(r => r.some(c => String(c).trim() !== ''));
 }
-function importCsvInto(state, text) {
+function importCsvInto(state, text, replace) {
   const rows = parseCsv(text);
   if (!rows.length) return { added: 0, skipped: 0, errors: ['File is empty.'] };
   const head = rows[0].map(h => String(h).trim().toLowerCase());
@@ -303,6 +303,7 @@ function importCsvInto(state, text) {
   };
   const errors = [];
   let added = 0, skipped = 0;
+  const add = [];
   const programs = parsePrograms(state.metaMap);
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -324,11 +325,18 @@ function importCsvInto(state, text) {
     }
     const prog = programs.find(p => p.name.toLowerCase() === entry.program.toLowerCase());
     if (prog) entry.program = prog.name;
-    state.entries.push(entry);
+    add.push(entry);
     added++;
   }
+  if (replace) {
+    if (!add.length) { errors.push('Nothing valid was found in the file, so the current timetable was kept.'); return { added: 0, skipped, errors: errors.slice(0, 20), replaced: false }; }
+    state.entries = add;
+    state.statusRows = [];
+  } else {
+    state.entries = state.entries.concat(add);
+  }
   state.entries.forEach((e, i) => { e.id = 'r' + (i + 2); });
-  return { added, skipped, errors: errors.slice(0, 20) };
+  return { added, skipped, errors: errors.slice(0, 20), replaced: !!replace };
 }
 
 /* ---------------- HTTP plumbing ---------------- */
@@ -691,8 +699,8 @@ module.exports = async function handler(req, res) {
       if (method === 'POST' && p === '/api/admin/import') {
         const b = await readBody(req);
         const state = await loadState();
-        const result = importCsvInto(state, String(b.csv || ''));
-        if (result.added) await saveTimetable(state.entries);
+        const result = importCsvInto(state, String(b.csv || ''), !!b.replace);
+        if (result.added) { await saveTimetable(state.entries); if (result.replaced) await saveStatus(state.statusRows); }
         return send(res, 200, result, 'application/json');
       }
 
