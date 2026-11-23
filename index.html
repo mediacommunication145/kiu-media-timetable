@@ -1882,9 +1882,113 @@ function printCurrent(){
   if(!currentResults.length){ if(currentView === "teacher") applyTeacherFilters(true); else applyFilters(true); }
   setTimeout(function(){ window.print(); }, 60);
 }
+function pdfSheetGrid(){
+  var doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4", orientation: "landscape" });
+  var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+  var slots = slotList(currentResults);
+  var days = DAYS.filter(function(d){ return d === "Saturday" || currentResults.some(function(e){ return e.day === d; }); });
+  var margin = 30, dayW = 58;
+  var colW = (W - margin * 2 - dayW) / Math.max(slots.length, 1);
+  var hasClash = currentResults.some(function(x){ return !!clashBadge(x); });
+  function header(y0){
+    doc.setFontSize(13); doc.setTextColor(13, 59, 94); doc.setFont(undefined, "bold");
+    doc.text("Karakoram International University", margin, y0);
+    doc.setFontSize(11); doc.setTextColor(60, 60, 60); doc.setFont(undefined, "normal");
+    doc.text("Department of Media and Communication — " + (currentTitle || "Timetable"), margin, y0 + 18);
+    var hy = y0 + 32;
+    doc.setFillColor(13, 59, 94); doc.rect(margin, hy, W - margin * 2, 16, "F");
+    doc.setFontSize(8.5); doc.setTextColor(255, 255, 255); doc.setFont(undefined, "bold");
+    doc.text("Day", margin + 4, hy + 11);
+    slots.forEach(function(s, i){
+      doc.text(fmtTime(s.start) + (s.end ? " – " + fmtTime(s.end) : ""), margin + dayW + i * colW + 4, hy + 11);
+    });
+    doc.setFont(undefined, "normal"); doc.setTextColor(60, 60, 60);
+    return hy + 16;
+  }
+  var y = header(40);
+  if(hasClash){
+    doc.setFontSize(8.5); doc.setTextColor(161, 17, 17); doc.setFont(undefined, "bold");
+    doc.text("CLASH: two of these classes are at the same time — please confirm with the department office.", margin, y + 12);
+    doc.setFont(undefined, "normal"); doc.setTextColor(60, 60, 60);
+    y += 16;
+  }
+  days.forEach(function(day){
+    var cells = slots.map(function(s){
+      var cell = currentResults.filter(function(e){ return e.day === day && e.start === s.start && (e.end || "") === s.end; });
+      var groups = {};
+      cell.forEach(function(e){
+        var gk = [e.subject, e.teacher || "", e.semester, e.section || "", e.room || "", e.date || ""].join("|");
+        if(!groups[gk]) groups[gk] = { e: e, progs: [] };
+        var ps = progShort(e.program);
+        if(groups[gk].progs.indexOf(ps) < 0) groups[gk].progs.push(ps);
+      });
+      return Object.keys(groups).map(function(gk){
+        var g = groups[gk], e = g.e;
+        var st = entryStatusToday(e);
+        if(cell.some(function(x){ return x.subject === e.subject && entryStatusToday(x) === "cancelled"; })) st = "cancelled";
+        var order = { MC: 0, DM: 1 };
+        g.progs.sort(function(a, b){ return (order[a] === undefined ? 2 : order[a]) - (order[b] === undefined ? 2 : order[b]); });
+        doc.setFontSize(8.5); doc.setFont(undefined, "bold");
+        var subj = doc.splitTextToSize(e.subject || "", colW - 10);
+        doc.setFontSize(7.5); doc.setFont(undefined, "normal");
+        var meta = doc.splitTextToSize("BS-" + ordSem(e.semester) + " " + (g.progs.length > 1 ? g.progs.join("/") : "Only " + g.progs[0]) + (e.section ? " · Sec " + e.section : "") + (e.room ? " · " + e.room : "") + (isExtra(e) ? " · EXTRA CLASS" : ""), colW - 10);
+        var teach = e.teacher ? doc.splitTextToSize(e.teacher, colW - 10) : [];
+        var status = st === "cancelled" ? "CANCELLED" : (st === "confirmed" ? "CONFIRMED" : "");
+        var reason = (st === "cancelled" && todayCancelReason(e)) ? doc.splitTextToSize("Reason: " + todayCancelReason(e), colW - 10) : [];
+        var clash = !!clashBadge(e);
+        var h = subj.length * 10 + (meta.length + teach.length) * 9 + (status ? 9 : 0) + (clash ? 9 : 0) + reason.length * 8 + 7;
+        return { e: e, st: st, subj: subj, meta: meta, teach: teach, status: status, reason: reason, clash: clash, h: h };
+      });
+    });
+    var rowH = 18;
+    cells.forEach(function(blocks){
+      var ch = 4;
+      blocks.forEach(function(b){ ch += b.h + 3; });
+      if(ch > rowH) rowH = ch;
+    });
+    if(y + rowH > H - 26){ doc.addPage(); y = header(40); }
+    doc.setFillColor(250, 243, 224); doc.rect(margin, y, dayW, rowH, "F");
+    doc.setDrawColor(205); doc.rect(margin, y, dayW, rowH);
+    doc.setFontSize(8.5); doc.setTextColor(13, 59, 94); doc.setFont(undefined, "bold");
+    doc.text(doc.splitTextToSize(day, dayW - 8), margin + 4, y + 13);
+    doc.setFont(undefined, "normal"); doc.setTextColor(60, 60, 60);
+    cells.forEach(function(blocks, i){
+      var cx = margin + dayW + i * colW;
+      doc.setDrawColor(205); doc.rect(cx, y, colW, rowH);
+      var by = y + 3;
+      blocks.forEach(function(b){
+        if(b.st === "cancelled" || b.clash){ doc.setFillColor(253, 232, 232); } else { doc.setFillColor(233, 247, 239); }
+        doc.rect(cx + 2, by, colW - 4, b.h, "F");
+        if(b.clash){ doc.setDrawColor(220, 38, 38); doc.rect(cx + 2, by, colW - 4, b.h); doc.setDrawColor(205); }
+        var ty = by + 9;
+        doc.setFontSize(8.5); doc.setFont(undefined, "bold"); doc.setTextColor(13, 59, 94);
+        doc.text(b.subj, cx + 5, ty); ty += b.subj.length * 10;
+        doc.setFontSize(7.5); doc.setFont(undefined, "normal"); doc.setTextColor(68, 68, 68);
+        if(b.meta.length){ doc.text(b.meta, cx + 5, ty); ty += b.meta.length * 9; }
+        if(b.teach.length){ doc.setFont(undefined, "italic"); doc.text(b.teach, cx + 5, ty); ty += b.teach.length * 9; doc.setFont(undefined, "normal"); }
+        if(b.status){
+          doc.setFont(undefined, "bold");
+          if(b.st === "cancelled") doc.setTextColor(161, 17, 17); else doc.setTextColor(21, 115, 71);
+          doc.text(b.status, cx + 5, ty); ty += 9;
+          doc.setFont(undefined, "normal"); doc.setTextColor(68, 68, 68);
+        }
+        if(b.clash){
+          doc.setFont(undefined, "bold"); doc.setTextColor(161, 17, 17);
+          doc.text("CLASH", cx + 5, ty); ty += 9;
+          doc.setFont(undefined, "normal"); doc.setTextColor(68, 68, 68);
+        }
+        if(b.reason.length){ doc.setFontSize(7); doc.text(b.reason, cx + 5, ty); ty += b.reason.length * 8; doc.setFontSize(7.5); }
+        by += b.h + 3;
+      });
+    });
+    y += rowH;
+  });
+  doc.save("kiu-media-timetable-grid.pdf");
+}
 function pdfCurrent(){
   if(!currentResults.length){ if(currentView === "teacher") applyTeacherFilters(true); else applyFilters(true); if(!currentResults.length) return; }
   if(!(window.jspdf && window.jspdf.jsPDF)){ window.print(); return; }
+  if(currentView === "sheet"){ pdfSheetGrid(); return; }
   var doc = new window.jspdf.jsPDF({unit:"pt", format:"a4"});
   var W = doc.internal.pageSize.getWidth();
   doc.setFontSize(13); doc.setTextColor(13,59,94);
