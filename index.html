@@ -489,6 +489,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
         <button class="btn light" type="button" id="crTodayBtn">Today</button>
         <button class="btn gold" type="button" id="crViewBtn">View Report</button>
         <span class="spacer"></span>
+        <select id="crSemSel" aria-label="Semester for the PDF download"><option value="all">All Semesters</option></select>
         <button class="btn light" type="button" id="crDownloadBtn">⬇ Download PDF</button>
         <button class="btn light" type="button" id="crPrintBtn">🖨 Print</button>
       </div>
@@ -1363,6 +1364,13 @@ function renderCrReport(){
   var dateEl = $("crDate");
   if(dateEl){ var todayD = pktParts().date; dateEl.max = todayD; var _cd = new Date(todayD + "T12:00:00Z"); _cd.setUTCMonth(_cd.getUTCMonth() - 6); dateEl.min = _cd.toISOString().slice(0, 10); if(!dateEl.value) dateEl.value = todayD; }
   var d = crReportData(crSelectedDate());
+  var semSel = $("crSemSel");
+  if(semSel){
+    var curSem = semSel.value || "all";
+    var semGroups = crGroups(d.rows);
+    semSel.innerHTML = '<option value="all">All Semesters</option>' + semGroups.map(function(g){ return '<option value="' + esc(g.sem) + '">Semester ' + esc(g.sem) + " only</option>"; }).join("");
+    semSel.value = semGroups.some(function(g){ return g.sem === curSem; }) ? curSem : "all";
+  }
   if(!d.rows.length){ box.innerHTML = '<div class="msg">No classes were scheduled for ' + esc(d.day) + ", " + esc(fmtDate(d.date)) + ".</div>"; return; }
   var rowHtml = function(r){
     var statusHtml;
@@ -1418,13 +1426,30 @@ function crReportCsv(dateStr){
 function downloadCrReportPdf(){
   var dateStr = crSelectedDate();
   var d = crReportData(dateStr);
+  var semPick = $("crSemSel") ? String($("crSemSel").value || "all") : "all";
+  if(semPick !== "all"){
+    d.rows = d.rows.filter(function(r){ return String(r.sem) === semPick; });
+    var sc = { total: d.rows.length, held: 0, notHeld: 0, pending: 0, canc: 0 };
+    var tMap = {};
+    d.rows.forEach(function(r){
+      if(r.status === "held") sc.held++; else if(r.status === "not_held") sc.notHeld++; else if(r.status === "cancelled") sc.canc++; else sc.pending++;
+      if(r.status === "held" || r.status === "not_held"){
+        var tk = r.teacher || "\u2014";
+        tMap[tk] = tMap[tk] || { held: 0, notHeld: 0 };
+        if(r.status === "held") tMap[tk].held++; else tMap[tk].notHeld++;
+      }
+    });
+    d.counts = sc;
+    d.teacherRows = Object.keys(tMap).sort().map(function(t){ return { teacher: t, held: tMap[t].held, notHeld: tMap[t].notHeld }; });
+    d.semesterOnly = semPick;
+  }
   if(!(window.jspdf && window.jspdf.jsPDF)){ window.print(); return; }
   var doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
   var W = doc.internal.pageSize.getWidth();
   doc.setFontSize(14); doc.setTextColor(13, 59, 94);
   doc.text("Department of Media and Communication", 40, 44);
   doc.setFontSize(11); doc.setTextColor(60, 60, 60);
-  doc.text("Karakoram International University \u2014 Class Report (by CRs)", 40, 62);
+  doc.text("Karakoram International University \u2014 Class Report (by CRs)" + (d.semesterOnly ? " \u2014 Semester " + d.semesterOnly + " only" : ""), 40, 62);
   doc.setFontSize(10);
   doc.text(d.day + ", " + fmtDate(d.date) + " \u00B7 Total classes: " + d.counts.total + " \u00B7 Held: " + d.counts.held + " \u00B7 Not held: " + d.counts.notHeld + " \u00B7 Pending: " + d.counts.pending + (d.counts.canc ? " \u00B7 Cancelled by office: " + d.counts.canc : ""), 40, 80);
   var cols = [40, 190, 232, 322, 372, 452];
@@ -1475,7 +1500,7 @@ function downloadCrReportPdf(){
       y += 14;
     });
   }
-  doc.save("kiu-class-report-" + dateStr + ".pdf");
+  doc.save("kiu-class-report-" + dateStr + (d.semesterOnly ? "-semester-" + d.semesterOnly : "") + ".pdf");
 }
 function downloadCrReport(){
   var dateStr = crSelectedDate();
