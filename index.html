@@ -1371,6 +1371,7 @@ function renderCrReport(){
     semSel.innerHTML = '<option value="all">All Semesters</option>' + semGroups.map(function(g){ return '<option value="' + esc(g.sem) + '">Semester ' + esc(g.sem) + " only</option>"; }).join("");
     semSel.value = semGroups.some(function(g){ return g.sem === curSem; }) ? curSem : "all";
   }
+  if(semSel && semSel.value && semSel.value !== "all") crScopeSemester(d, semSel.value);
   if(!d.rows.length){ box.innerHTML = '<div class="msg">No classes were scheduled for ' + esc(d.day) + ", " + esc(fmtDate(d.date)) + ".</div>"; return; }
   var rowHtml = function(r){
     var statusHtml;
@@ -1423,26 +1424,29 @@ function crReportCsv(dateStr){
   }
   return lines.join("\n");
 }
+function crScopeSemester(d, sem){
+  if(!sem || sem === "all") return d;
+  d.rows = d.rows.filter(function(r){ return String(r.sem) === String(sem); });
+  var sc = { total: d.rows.length, held: 0, notHeld: 0, pending: 0, canc: 0 };
+  var tMap = {};
+  d.rows.forEach(function(r){
+    if(r.status === "held") sc.held++; else if(r.status === "not_held") sc.notHeld++; else if(r.status === "cancelled") sc.canc++; else sc.pending++;
+    if(r.status === "held" || r.status === "not_held"){
+      var tk = r.teacher || "—";
+      tMap[tk] = tMap[tk] || { held: 0, notHeld: 0 };
+      if(r.status === "held") tMap[tk].held++; else tMap[tk].notHeld++;
+    }
+  });
+  d.counts = sc;
+  d.teacherRows = Object.keys(tMap).sort().map(function(t){ return { teacher: t, held: tMap[t].held, notHeld: tMap[t].notHeld }; });
+  d.semesterOnly = String(sem);
+  return d;
+}
 function downloadCrReportPdf(){
   var dateStr = crSelectedDate();
   var d = crReportData(dateStr);
   var semPick = $("crSemSel") ? String($("crSemSel").value || "all") : "all";
-  if(semPick !== "all"){
-    d.rows = d.rows.filter(function(r){ return String(r.sem) === semPick; });
-    var sc = { total: d.rows.length, held: 0, notHeld: 0, pending: 0, canc: 0 };
-    var tMap = {};
-    d.rows.forEach(function(r){
-      if(r.status === "held") sc.held++; else if(r.status === "not_held") sc.notHeld++; else if(r.status === "cancelled") sc.canc++; else sc.pending++;
-      if(r.status === "held" || r.status === "not_held"){
-        var tk = r.teacher || "\u2014";
-        tMap[tk] = tMap[tk] || { held: 0, notHeld: 0 };
-        if(r.status === "held") tMap[tk].held++; else tMap[tk].notHeld++;
-      }
-    });
-    d.counts = sc;
-    d.teacherRows = Object.keys(tMap).sort().map(function(t){ return { teacher: t, held: tMap[t].held, notHeld: tMap[t].notHeld }; });
-    d.semesterOnly = semPick;
-  }
+  crScopeSemester(d, semPick);
   if(!(window.jspdf && window.jspdf.jsPDF)){ window.print(); return; }
   var doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
   var W = doc.internal.pageSize.getWidth();
@@ -1533,6 +1537,7 @@ function printCrReport(){
   setTimeout(function(){ window.print(); }, 60);
 }
 $("crDate").addEventListener("change", renderCrReport);
+$("crSemSel").addEventListener("change", renderCrReport);
 $("crTodayBtn").addEventListener("click", function(){ $("crDate").value = pktParts().date; renderCrReport(); });
 $("crViewBtn").addEventListener("click", renderCrReport);
 $("crDownloadBtn").addEventListener("click", downloadCrReportPdf);
