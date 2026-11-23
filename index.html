@@ -563,10 +563,10 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
     </div>
 
     <div class="card">
-      <h2>Import from Excel / CSV</h2>
-      <p class="sub">Upload your Excel sheet (.xlsx) directly, or a CSV. Columns: <strong>Program, Semester, Section, Day, Start, End, Subject, Teacher, Classroom</strong> (Start/End like 09:00 and 10:30, or a single Time column like 09:00-10:30).</p>
+      <h2>Import from Excel / CSV / PDF / Word</h2>
+      <p class="sub">Upload your Excel sheet (.xlsx), a CSV, a PDF, or a Word file (.docx). For PDF and Word, the timetable must be in a proper table with these columns: <strong>Program, Semester, Section, Day, Start, End, Subject, Teacher, Classroom</strong> (Start/End like 09:00 and 10:30, or a single Time column like 09:00-10:30).</p>
       <div class="actions no-print">
-        <input type="file" id="csvFile" accept=".csv,.xlsx,.xls,text/csv">
+        <input type="file" id="csvFile" accept=".csv,.xlsx,.xls,.pdf,.docx,text/csv">
         <button class="btn" type="button" id="importBtn">Import File</button>
         <button class="btn light" type="button" id="templateBtn">Download CSV Template</button>
       </div>
@@ -2021,8 +2021,9 @@ $("templateBtn").addEventListener("click", function(){
 });
 $("importBtn").addEventListener("click", async function(){
   var f = $("csvFile").files[0];
-  if(!f){ $("importMsg").innerHTML = '<div class="msg err">Please choose a CSV file first.</div>'; return; }
-  var text = await fileToCsvText(f);
+  if(!f){ $("importMsg").innerHTML = '<div class="msg err">Please choose a file first.</div>'; return; }
+  var text;
+  try{ text = await fileToCsvText(f); }catch(e){ $("importMsg").innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; return; }
   try{
     if(serverMode){
       var r = await api("/api/admin/import","POST",{csv:text});
@@ -2334,6 +2335,28 @@ async function fileToCsvText(file){
     var ws = wb.Sheets[wb.SheetNames[0]];
     return window.XLSX.utils.sheet_to_csv(ws);
   }
+  if(name.endsWith(".pdf")){
+    return pdfToCsvText(file);
+  }
+  if(name.endsWith(".docx")){
+    if(!window.mammoth) await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
+    var dbuf = await file.arrayBuffer();
+    var conv = await window.mammoth.convertToHtml({arrayBuffer: dbuf});
+    var pdoc = new DOMParser().parseFromString(conv.value, "text/html");
+    var tables = pdoc.querySelectorAll("table");
+    if(!tables.length) throw new Error("No table found in this Word file. Please put the timetable in a table, with the column headings in the first row.");
+    var lines = [];
+    tables.forEach(function(tb){
+      tb.querySelectorAll("tr").forEach(function(tr){
+        var cells = [];
+        tr.querySelectorAll("th,td").forEach(function(td){ cells.push('"' + td.textContent.trim().replace(/"/g, '""').replace(/\s+/g, " ") + '"'); });
+        if(cells.length) lines.push(cells.join(","));
+      });
+    });
+    if(!lines.length) throw new Error("The table in this Word file appears to be empty.");
+    return lines.join("\n");
+  }
+  if(name.endsWith(".doc")) throw new Error("Old .doc files cannot be read. Please open the file in Word, save it as .docx, and upload that instead.");
   return file.text();
 }
 async function extractPdfText(file){
@@ -2352,6 +2375,51 @@ async function extractPdfText(file){
     });
   }
   return out.join("\n");
+}
+async function pdfToCsvText(file){
+  if(!window.pdfjsLib) await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  var buf = await file.arrayBuffer();
+  var doc = await window.pdfjsLib.getDocument({data:buf}).promise;
+  var HEAD_WORDS = ["program","semester","section","day","start","end","time","subject","teacher","classroom","room"];
+  function csvQ(s){ return '"' + String(s).replace(/"/g, '""') + '"'; }
+  var outLines = [];
+  for(var pno=1; pno<=doc.numPages; pno++){
+    var page = await doc.getPage(pno);
+    var tc = await page.getTextContent();
+    var items = [];
+    tc.items.forEach(function(it){ var str = (it.str || "").trim(); if(str) items.push({ x: it.transform[4], y: it.transform[5], str: str }); });
+    items.sort(function(a,b){ return b.y - a.y || a.x - b.x; });
+    var linesArr = [];
+    items.forEach(function(o){
+      var last = linesArr[linesArr.length - 1];
+      if(last && Math.abs(last.y - o.y) <= 3) last.items.push(o); else linesArr.push({ y: o.y, items: [o] });
+    });
+    var headerIdx = -1, cols = null;
+    for(var li=0; li<linesArr.length; li++){
+      var hits = linesArr[li].items.filter(function(o){ return HEAD_WORDS.indexOf(o.str.toLowerCase().replace(/[^a-z]/g, "")) >= 0; }).length;
+      if(hits >= 3){ headerIdx = li; cols = linesArr[li].items.slice().sort(function(a,b){ return a.x-b.x; }).map(function(o){ return o.x; }); break; }
+    }
+    if(headerIdx < 0) continue;
+    function rowCells(lineItems){
+      var cells = cols.map(function(){ return ""; });
+      lineItems.slice().sort(function(a,b){ return a.x-b.x; }).forEach(function(o){
+        var ci = 0;
+        for(var k=0; k<cols.length; k++){ if(o.x >= cols[k] - 4) ci = k; }
+        cells[ci] = cells[ci] ? cells[ci] + " " + o.str : o.str;
+      });
+      return cells;
+    }
+    if(pno === 1) outLines.push(rowCells(linesArr[headerIdx].items).map(csvQ).join(","));
+    for(var lj=headerIdx+1; lj<linesArr.length; lj++){
+      var cells = rowCells(linesArr[lj].items);
+      if(!cells.some(function(c){ return c.trim() !== ""; })) continue;
+      if(cells[0].toLowerCase() === "program") continue;
+      outLines.push(cells.map(csvQ).join(","));
+    }
+  }
+  if(!outLines.length) throw new Error("No timetable table found in this PDF. The first row of the table must be the column headings (Program, Semester, Day, Start, End, Subject, Teacher, Classroom), and the text must be selectable — a scanned photo PDF cannot be read.");
+  return outLines.join("\n");
 }
 function sheetSay(html, ok){ $("sheetMsg").innerHTML = html ? '<div class="msg '+(ok?"ok":"err")+'">'+html+'</div>' : ""; }
 function localSheets(){ try{ return JSON.parse(localStorage.getItem(SHEETS_LS_KEY) || "[]"); }catch(e){ return []; } }
