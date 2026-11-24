@@ -1746,6 +1746,32 @@ function combinedBadge(e){
   if(c) return ' <span class="badge" style="background:#e8eefc;color:var(--navy)">Combined ' + esc(c) + '</span>';
   return ' <span class="badge" style="background:#f1f4f8;color:var(--muted)">Only ' + esc(progShort(e.program)) + '</span>';
 }
+function sessionGroups(list){
+  var groups = {}, order = [];
+  (list || []).forEach(function(e){
+    var k = [e.day, e.start, e.end || "", e.subject, e.teacher || "", e.semester, e.section || "", e.room || "", e.date || ""].join("|");
+    if(!groups[k]){ groups[k] = { e: e, entries: [], progs: [], names: [] }; order.push(groups[k]); }
+    groups[k].entries.push(e);
+    var ps = progShort(e.program);
+    if(groups[k].progs.indexOf(ps) < 0) groups[k].progs.push(ps);
+    if(groups[k].names.indexOf(e.program) < 0) groups[k].names.push(e.program);
+  });
+  var ord = { MC: 0, DM: 1 };
+  order.forEach(function(g){
+    g.progs.sort(function(a, b){ return (ord[a] === undefined ? 2 : ord[a]) - (ord[b] === undefined ? 2 : ord[b]); });
+    g.names.sort(function(a, b){ var pa = progShort(a), pb = progShort(b); return (ord[pa] === undefined ? 2 : ord[pa]) - (ord[pb] === undefined ? 2 : ord[pb]); });
+  });
+  return order;
+}
+function groupStatus(g){
+  var st = entryStatusToday(g.e);
+  for(var i = 0; i < g.entries.length; i++){ if(entryStatusToday(g.entries[i]) === "cancelled") return "cancelled"; }
+  return st;
+}
+function groupReason(g){
+  for(var i = 0; i < g.entries.length; i++){ var r = todayCancelReason(g.entries[i]); if(r) return r; }
+  return "";
+}
 var DEPT_HTML = '<p class="sub" style="margin:0 0 8px;font-weight:700;color:var(--navy)">Department of Media and Communication — Karakoram International University (KIU)</p>';
 function renderResults(list, title, metaChips){
   currentView = "student";
@@ -1754,14 +1780,16 @@ function renderResults(list, title, metaChips){
     $("results").innerHTML = '<div class="empty"><strong>No classes found</strong>No classes are available for the selected filters. Try a different semester, section or day — or use View Full Timetable.</div>';
     return;
   }
-  var html = DEPT_HTML + '<div class="result-meta"><strong>'+esc(title)+'</strong>' + (metaChips||"") + '<span class="chip">'+currentResults.length+' class'+(currentResults.length===1?"":"es")+'</span></div>';
+  var groups = sessionGroups(currentResults);
+  var html = DEPT_HTML + '<div class="result-meta"><strong>'+esc(title)+'</strong>' + (metaChips||"") + '<span class="chip">'+groups.length+' class'+(groups.length===1?"":"es")+'</span></div>';
   html += '<p class="sub" style="margin:2px 0 8px"><span class="badge ok">GREEN</span> class will be held &nbsp;<span class="badge bad">RED</span> class is cancelled' + (currentResults.some(function(x){ return !!clashBadge(x); }) ? ' &nbsp;<span class="badge" style="background:#fde8e8;color:#a11">\u26A0 CLASH</span> two of these classes are at the same time \u2014 please confirm with the department office' : '') + '</p>';
   html += '<div class="table-wrap"><table class="rtable"><thead><tr><th>Day</th><th>Subject</th><th>Teacher</th><th>Classroom</th><th>Time</th></tr></thead><tbody>';
   var lastDay = null, groupByDay = currentResults.some(function(e){ return e.day !== currentResults[0].day; }) || selectedDayCount() !== 1;
-  currentResults.forEach(function(e){
+  groups.forEach(function(g){
+    var e = g.e;
     if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
-    var st = entryStatusToday(e);
-    html += '<tr class="'+(st === "cancelled" ? "row-cancelled" : "row-on")+(clashBadge(e) ? " clash-row" : "")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Teacher">'+esc(e.teacher||"—")+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+    var st = groupStatus(g);
+    html += '<tr class="'+(st === "cancelled" ? "row-cancelled" : "row-on")+(clashBadge(e) ? " clash-row" : "")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st === "cancelled" && groupReason(g) ? '<br><span class="hint">Reason: '+esc(groupReason(g))+'</span>' : '')+'</td><td data-label="Teacher">'+esc(e.teacher||"—")+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
   });
   html += '</tbody></table></div>';
   $("results").innerHTML = html;
@@ -1791,7 +1819,7 @@ function renderSheetGrid(list, title){
   var slots = slotList(currentResults);
   var now = pktParts();
   var days = DAYS.filter(function(d){ return d === "Saturday" || currentResults.some(function(e){ return e.day === d; }); });
-  var html = DEPT_HTML + '<div class="result-meta"><strong>' + esc(title) + '</strong><span class="chip">' + currentResults.length + ' classes</span></div>';
+  var html = DEPT_HTML + '<div class="result-meta"><strong>' + esc(title) + '</strong><span class="chip">' + sessionGroups(currentResults).length + ' classes</span></div>';
   html += '<p class="sub" style="margin:2px 0 8px"><span class="badge ok">GREEN</span> class will be held &nbsp;<span class="badge bad">RED</span> class is cancelled &nbsp;·&nbsp; scroll the sheet sideways on a phone' + (currentResults.some(function(x){ return !!clashBadge(x); }) ? ' &nbsp;<span class="badge" style="background:#fde8e8;color:#a11">\u26A0 CLASH</span> two of these classes are at the same time \u2014 please confirm with the department office' : '') + '</p>';
   html += '<div class="grid-wrap"><table class="sheet"><thead><tr><th class="day-col">Day</th>';
   slots.forEach(function(s){ html += '<th>' + esc(fmtTime(s.start)) + (s.end ? ' – ' + esc(fmtTime(s.end)) : '') + '</th>'; });
@@ -1999,11 +2027,12 @@ function pdfCurrent(){
   var cols = [40, 115, 275, 395, 485];
   doc.setFont(undefined,"bold"); doc.text("Day", cols[0], y); doc.text("Subject", cols[1], y); doc.text(currentView === "teacher" ? "Class" : "Teacher", cols[2], y); doc.text("Room", cols[3], y); doc.text("Time", cols[4], y);
   doc.setFont(undefined,"normal"); y += 8; doc.line(40, y, W-40, y); y += 16;
-  currentResults.forEach(function(e){
+  sessionGroups(currentResults).forEach(function(g){
+    var e = g.e;
     if(y > 790){ doc.addPage(); y = 56; }
     var c0 = doc.splitTextToSize(e.day||"", 70);
-    var c1 = doc.splitTextToSize((e.subject||"") + (entryStatusToday(e) === "cancelled" ? " (CANCELLED" + (statusRecord(e) && statusRecord(e).date !== pktParts().date ? " " + fmtDate(statusRecord(e).date) : "") + ")" : ""), 155);
-    var c2 = doc.splitTextToSize(currentView === "teacher" ? ((e.program||"") + " Sem " + (e.semester||"")) : (e.teacher||"—"), 115);
+    var c1 = doc.splitTextToSize((e.subject||"") + (groupStatus(g) === "cancelled" ? " (CANCELLED" + (statusRecord(e) && statusRecord(e).date !== pktParts().date ? " " + fmtDate(statusRecord(e).date) : "") + ")" : ""), 155);
+    var c2 = doc.splitTextToSize(currentView === "teacher" ? (g.names.join(" + ") + " Sem " + (e.semester||"")) : (e.teacher||"—"), 115);
     var c3 = doc.splitTextToSize(e.room||"—", 85);
     var c4 = doc.splitTextToSize(timeRange(e), 70);
     var rowLines = Math.max(c0.length, c1.length, c2.length, c3.length, c4.length, 1);
@@ -2539,14 +2568,16 @@ function renderTeacherResults(list, title, metaChips){
     $("results").innerHTML = '<div class="empty"><strong>No classes found</strong>This teacher has no classes for the selected days.</div>';
     return;
   }
-  var html = DEPT_HTML + '<div class="result-meta"><strong>'+esc(title)+'</strong>' + (metaChips||"") + '<span class="chip">'+currentResults.length+' class'+(currentResults.length===1?"":"es")+'</span></div>';
+  var groups = sessionGroups(currentResults);
+  var html = DEPT_HTML + '<div class="result-meta"><strong>'+esc(title)+'</strong>' + (metaChips||"") + '<span class="chip">'+groups.length+' class'+(groups.length===1?"":"es")+'</span></div>';
   html += '<div class="table-wrap"><table class="rtable"><thead><tr><th>Day</th><th>Subject</th><th>Class</th><th>Classroom</th><th>Time</th></tr></thead><tbody>';
   var lastDay = null, groupByDay = currentResults.some(function(e){ return e.day !== currentResults[0].day; }) || tSelectedDayCount() !== 1;
-  currentResults.forEach(function(e){
+  groups.forEach(function(g){
+    var e = g.e;
     if(groupByDay && e.day !== lastDay){ lastDay = e.day; html += '<tr class="day-head"><td colspan="5">'+esc(e.day)+'</td></tr>'; }
-    var cls = (e.program||"") + " — Sem " + (e.semester||"") + (e.section ? " Sec " + e.section : "");
-    var st2 = entryStatusToday(e);
-    html += '<tr class="'+(st2 === "cancelled" ? "row-cancelled" : "row-on")+(clashBadge(e) ? " clash-row" : "")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st2)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st2 === "cancelled" && todayCancelReason(e) ? '<br><span class="hint">Reason: '+esc(todayCancelReason(e))+'</span>' : '')+'</td><td data-label="Class">'+esc(cls)+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
+    var cls = g.names.join(" + ") + " — Sem " + (e.semester||"") + (e.section ? " Sec " + e.section : "");
+    var st2 = groupStatus(g);
+    html += '<tr class="'+(st2 === "cancelled" ? "row-cancelled" : "row-on")+(clashBadge(e) ? " clash-row" : "")+'"><td data-label="Day">'+esc(e.day)+'</td><td data-label="Subject" class="subj">'+esc(e.subject)+statusBadge(st2)+statusDateTag(e)+combinedBadge(e)+extraBadge(e)+clashBadge(e)+(st2 === "cancelled" && groupReason(g) ? '<br><span class="hint">Reason: '+esc(groupReason(g))+'</span>' : '')+'</td><td data-label="Class">'+esc(cls)+'</td><td data-label="Classroom">'+esc(e.room||"—")+'</td><td data-label="Time">'+esc(timeRange(e))+'</td></tr>';
   });
   html += '</tbody></table></div>';
   $("results").innerHTML = html;
