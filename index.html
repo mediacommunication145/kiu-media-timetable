@@ -390,6 +390,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
     <div class="card hidden" id="crPanelCard">
       <h2 id="crTitle">Today's Classes</h2>
       <p class="sub" id="crSub"></p>
+      <div id="crTimerBox" class="msg" style="display:none;background:#fff4d6;color:#8a6508;border:1px solid #ecd28f;font-weight:600">\u23F3 Time left to mark today's classes: <span id="crTimer">--:--:--</span> \u2014 marking every class within 24 hours (before midnight) is compulsory.</div>
       <div id="crMsg"></div>
       <div id="crList"></div>
       <div class="actions" style="margin-top:12px">
@@ -1170,8 +1171,8 @@ var crSession = null;
 function crProgShort(p){ return String(p || "").indexOf("Digital") >= 0 ? "DM" : "MC"; }
 function showCR(){
   $("studentView").classList.add("hidden"); $("loginView").classList.add("hidden"); $("adminView").classList.add("hidden"); $("crView").classList.remove("hidden");
-  if(crSession){ $("crLoginCard").classList.add("hidden"); $("crPanelCard").classList.remove("hidden"); loadCrToday(); }
-  else { $("crPanelCard").classList.add("hidden"); $("crLoginCard").classList.remove("hidden"); }
+  if(crSession){ $("crLoginCard").classList.add("hidden"); $("crPanelCard").classList.remove("hidden"); crTimerStart(); loadCrToday(); }
+  else { $("crPanelCard").classList.add("hidden"); $("crLoginCard").classList.remove("hidden"); crTimerStop(); }
 }
 $("crLoginBtn").addEventListener("click", showCR);
 $("crBackBtn").addEventListener("click", showStudent);
@@ -1208,6 +1209,26 @@ $("crLogoutBtn").addEventListener("click", async function(){
   crSession = null;
   showCR();
 });
+var crTimerInt = null;
+function crTimerTick(){
+  var el = $("crTimer"); if(!el) return;
+  var fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Karachi", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  var parts = {};
+  fmt.formatToParts(new Date()).forEach(function(x){ parts[x.type] = x.value; });
+  var elapsed = (parseInt(parts.hour, 10) % 24) * 3600 + parseInt(parts.minute, 10) * 60 + parseInt(parts.second, 10);
+  var left = 86400 - elapsed;
+  var h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
+  el.textContent = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+}
+function crTimerStart(){
+  var box = $("crTimerBox"); if(box) box.style.display = "";
+  crTimerTick();
+  if(!crTimerInt) crTimerInt = setInterval(crTimerTick, 1000);
+}
+function crTimerStop(){
+  var box = $("crTimerBox"); if(box) box.style.display = "none";
+  if(crTimerInt){ clearInterval(crTimerInt); crTimerInt = null; }
+}
 function crTodayList(program, semester){
   var now = pktParts();
   var reps = db.reports || [];
