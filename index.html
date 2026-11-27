@@ -487,12 +487,13 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
         <h2 style="margin:0">📋 Class Report — by CRs</h2>
         <button class="btn light small" type="button" id="crReportToggle" style="white-space:nowrap">Show Report ▼</button>
       </div>
-      <p class="sub">Which classes were actually held, as reported by the class CRs. Pick any date to check an old report — reports are kept for 6 months. "Pending" means that class's CR has not reported yet.</p>
+      <p class="sub">Which classes were actually held, as reported by the class CRs. Pick any date to check an old report, or choose the Weekly / Monthly report for a combined report of that whole period — reports are kept for 6 months. "Pending" means that class's CR has not reported yet.</p>
       <div id="crReportWrap" class="hidden">
       <div class="actions no-print" style="margin-bottom:10px">
         <input type="date" id="crDate" aria-label="Report date">
         <button class="btn light" type="button" id="crTodayBtn">Today</button>
         <button class="btn gold" type="button" id="crViewBtn">View Report</button>
+        <select id="crPeriod" aria-label="Report period"><option value="day">Daily Report</option><option value="week">Weekly Report</option><option value="month">Monthly Report</option></select>
         <span class="spacer"></span>
         <select id="crSemSel" aria-label="Semester for the PDF download"><option value="all">All Semesters</option></select>
         <button class="btn light" type="button" id="crDownloadBtn">⬇ Download PDF</button>
@@ -1368,17 +1369,20 @@ function renderCrReport(){
   var box = $("crReportBox"); if(!box) return;
   var dateEl = $("crDate");
   if(dateEl){ var todayD = pktParts().date; dateEl.max = todayD; var _cd = new Date(todayD + "T12:00:00Z"); _cd.setUTCMonth(_cd.getUTCMonth() - 6); dateEl.min = _cd.toISOString().slice(0, 10); if(!dateEl.value) dateEl.value = todayD; }
-  var d = crReportData(crSelectedDate());
   var semSel = $("crSemSel");
   if(semSel){
     var curSem = semSel.value || "all";
     var semList = ["1", "2", "3", "4", "5", "6", "7", "8"];
-    crGroups(d.rows).forEach(function(g){ if(semList.indexOf(g.sem) < 0) semList.push(g.sem); });
+    (db.entries || []).forEach(function(e){ var sm0 = String(e.semester || ""); if(sm0 && semList.indexOf(sm0) < 0) semList.push(sm0); });
     semSel.innerHTML = '<option value="all">All Semesters</option>' + semList.map(function(sm){ return '<option value="' + esc(sm) + '">Semester ' + esc(sm) + " only</option>"; }).join("");
     semSel.value = (curSem === "all" || semList.indexOf(curSem) >= 0) ? curSem : "all";
   }
-  if(semSel && semSel.value && semSel.value !== "all") crScopeSemester(d, semSel.value);
-  if(!d.rows.length){ box.innerHTML = '<div class="msg">' + (d.semesterOnly ? "No Semester " + esc(d.semesterOnly) + " classes were scheduled for " : "No classes were scheduled for ") + esc(d.day) + ", " + esc(fmtDate(d.date)) + ".</div>"; return; }
+  var d = crCurrentReport();
+  if(!d.rows.length){
+    var whenTxt = d.period ? (d.period === "week" ? "the week " + fmtDate(d.rangeStart) + " \u2013 " + fmtDate(d.rangeEnd) : d.periodLabel) : (d.day + ", " + fmtDate(d.date));
+    box.innerHTML = '<div class="msg">' + (d.semesterOnly ? "No Semester " + esc(d.semesterOnly) + " classes were scheduled for " : "No classes were scheduled for ") + esc(whenTxt) + ".</div>";
+    return;
+  }
   var rowHtml = function(r){
     var statusHtml;
     if(r.status === "cancelled") statusHtml = '<span style="color:#a11"><strong>Cancelled by office</strong></span>';
@@ -1388,11 +1392,14 @@ function renderCrReport(){
     var clearBtn = r.rep ? ' <button class="btn small light" type="button" data-cr-clear="' + r.entryId + '">Clear</button>' : "";
     return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.time) + "</td><td>" + statusHtml + clearBtn + "</td></tr>";
   };
-  var rows = crGroups(d.rows).map(function(g){
-    return '<tr class="day-head"><td colspan="6">Semester ' + esc(g.sem) + ' \u2014 ' + g.counts.total + ' classes \u00B7 \u2705 Held: ' + g.counts.held + ' \u00B7 \u274C Not held: ' + g.counts.notHeld + ' \u00B7 \u23F3 Pending: ' + g.counts.pending + (g.counts.canc ? ' \u00B7 Cancelled by office: ' + g.counts.canc : '') + '</td></tr>' + g.rows.map(rowHtml).join("");
+  var aggRowHtml = function(r){
+    return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.day) + " \u00B7 " + esc(r.time) + "</td><td>" + esc(crAggStatusText(r)) + "</td></tr>";
+  };
+  var rows = (d.period ? crAggGroups(d.rows) : crGroups(d.rows)).map(function(g){
+    return '<tr class="day-head"><td colspan="6">Semester ' + esc(g.sem) + ' \u2014 ' + g.counts.total + ' classes \u00B7 \u2705 Held: ' + g.counts.held + ' \u00B7 \u274C Not held: ' + g.counts.notHeld + ' \u00B7 \u23F3 Pending: ' + g.counts.pending + (g.counts.canc ? ' \u00B7 Cancelled by office: ' + g.counts.canc : '') + '</td></tr>' + g.rows.map(d.period ? aggRowHtml : rowHtml).join("");
   }).join("");
   var tRows = d.teacherRows.map(function(t){ return "<tr><td>" + esc(t.teacher) + "</td><td>" + t.held + "</td><td>" + t.notHeld + "</td></tr>"; }).join("");
-  box.innerHTML = '<p class="sub" style="margin-top:0"><strong>' + esc(d.day) + ", " + esc(fmtDate(d.date)) + "</strong> · Total classes: " + d.counts.total + " · ✅ Held: " + d.counts.held + " · ❌ Not held: " + d.counts.notHeld + " · ⏳ Pending: " + d.counts.pending + (d.counts.canc ? " · Cancelled by office: " + d.counts.canc : "") + "</p>" +
+  box.innerHTML = '<p class="sub" style="margin-top:0"><strong>' + esc(d.period ? d.periodLabel : (d.day + ", " + fmtDate(d.date))) + "</strong> · Total classes: " + d.counts.total + " · ✅ Held: " + d.counts.held + " · ❌ Not held: " + d.counts.notHeld + " · ⏳ Pending: " + d.counts.pending + (d.counts.canc ? " · Cancelled by office: " + d.counts.canc : "") + "</p>" +
     '<div class="table-wrap"><table class="sheet"><thead><tr><th>Subject</th><th>Class</th><th>Teacher</th><th>Classroom</th><th>Time</th><th>CR Report</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
     (tRows ? '<h3 style="margin:14px 0 6px;color:var(--navy)">By teacher (reported classes)</h3><div class="table-wrap"><table class="sheet"><thead><tr><th>Teacher</th><th>Held</th><th>Not Held</th></tr></thead><tbody>' + tRows + "</tbody></table></div>" : "");
   box.querySelectorAll("[data-cr-clear]").forEach(function(b){
@@ -1448,20 +1455,118 @@ function crScopeSemester(d, sem){
   d.semesterOnly = String(sem);
   return d;
 }
+function crPeriod(){
+  return ($("crPeriod") && $("crPeriod").value) || "day";
+}
+function crPeriodRange(){
+  var mode = crPeriod();
+  var anchor = crSelectedDate();
+  var today = pktParts().date;
+  if(mode === "week"){
+    var dow = DAYS.indexOf(weekdayOfDate(anchor));
+    if(dow < 0) dow = 6;
+    var wEnd = addDaysStr(anchor, 5 - dow);
+    return { mode: mode, start: addDaysStr(anchor, -dow), end: wEnd > today ? today : wEnd, anchor: anchor };
+  }
+  if(mode === "month"){
+    var p = anchor.split("-");
+    var last = new Date(+p[0], +p[1], 0).getDate();
+    var mEnd = p[0] + "-" + p[1] + "-" + (last < 10 ? "0" + last : "" + last);
+    return { mode: mode, start: p[0] + "-" + p[1] + "-01", end: mEnd > today ? today : mEnd, anchor: anchor };
+  }
+  return { mode: "day", start: anchor, end: anchor, anchor: anchor };
+}
+function crPeriodLabel(range){
+  if(range.mode === "week") return "Week: " + fmtDate(range.start) + " \u2013 " + fmtDate(range.end);
+  if(range.mode === "month"){
+    var names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    var p = range.start.split("-");
+    return names[(+p[1]) - 1] + " " + p[0];
+  }
+  return "";
+}
+function crAggStatusText(r){
+  return "Held: " + r.held + " \u00B7 Not held: " + r.notHeld + " \u00B7 Pending: " + r.pending + (r.canc ? " \u00B7 Cancelled by office: " + r.canc : "") + " (of " + r.total + " classes)";
+}
+function crAggGroups(rows){
+  var map = {}, order = [];
+  (rows || []).forEach(function(r){
+    var k = String(r.sem || "");
+    if(!map[k]){ map[k] = { sem: k, rows: [], counts: { total: 0, held: 0, notHeld: 0, pending: 0, canc: 0 } }; order.push(map[k]); }
+    map[k].rows.push(r);
+    map[k].counts.total += r.total; map[k].counts.held += r.held; map[k].counts.notHeld += r.notHeld; map[k].counts.pending += r.pending; map[k].counts.canc += r.canc;
+  });
+  order.sort(function(a, b){ return (parseInt(a.sem, 10) || 99) - (parseInt(b.sem, 10) || 99); });
+  return order;
+}
+function crAggregate(range){
+  var byKey = {}, order = [];
+  var counts = { total: 0, held: 0, notHeld: 0, pending: 0, canc: 0 };
+  var cur = range.start;
+  while(cur <= range.end){
+    var d = crReportData(cur);
+    counts.total += d.counts.total; counts.held += d.counts.held; counts.notHeld += d.counts.notHeld; counts.pending += d.counts.pending; counts.canc += d.counts.canc;
+    d.rows.forEach(function(r){
+      var k = [r.prog, r.sem, r.subject, r.teacher, r.room, d.day, r.time].join("|");
+      if(!byKey[k]){ byKey[k] = { subject: r.subject, classLabel: r.classLabel, prog: r.prog, sem: r.sem, teacher: r.teacher, room: r.room, day: d.day, time: r.time, held: 0, notHeld: 0, pending: 0, canc: 0, total: 0, agg: true }; order.push(byKey[k]); }
+      var a = byKey[k]; a.total++;
+      if(r.status === "held") a.held++; else if(r.status === "not_held") a.notHeld++; else if(r.status === "cancelled") a.canc++; else a.pending++;
+    });
+    cur = addDaysStr(cur, 1);
+  }
+  return { rows: order, counts: counts };
+}
+function crScopeAgg(d, sem){
+  if(!sem || sem === "all") return d;
+  d.rows = d.rows.filter(function(r){ return String(r.sem) === String(sem); });
+  var sc = { total: 0, held: 0, notHeld: 0, pending: 0, canc: 0 };
+  var tMap = {};
+  d.rows.forEach(function(r){
+    sc.total += r.total; sc.held += r.held; sc.notHeld += r.notHeld; sc.pending += r.pending; sc.canc += r.canc;
+    if(r.held || r.notHeld){
+      var tk = r.teacher || "\u2014";
+      tMap[tk] = tMap[tk] || { held: 0, notHeld: 0 };
+      tMap[tk].held += r.held; tMap[tk].notHeld += r.notHeld;
+    }
+  });
+  d.counts = sc;
+  d.teacherRows = Object.keys(tMap).sort().map(function(t){ return { teacher: t, held: tMap[t].held, notHeld: tMap[t].notHeld }; });
+  d.semesterOnly = String(sem);
+  return d;
+}
+function crCurrentReport(){
+  var range = crPeriodRange();
+  var semPick = $("crSemSel") ? String($("crSemSel").value || "all") : "all";
+  if(range.mode === "day"){
+    var d = crReportData(range.anchor);
+    crScopeSemester(d, semPick);
+    return d;
+  }
+  var agg = crAggregate(range);
+  var teacherMap = {};
+  agg.rows.forEach(function(r){
+    if(r.held || r.notHeld){
+      var tk = r.teacher || "\u2014";
+      teacherMap[tk] = teacherMap[tk] || { held: 0, notHeld: 0 };
+      teacherMap[tk].held += r.held; teacherMap[tk].notHeld += r.notHeld;
+    }
+  });
+  var d2 = { date: range.anchor, day: weekdayOfDate(range.anchor), rows: agg.rows, counts: agg.counts, teacherRows: Object.keys(teacherMap).sort().map(function(t){ return { teacher: t, held: teacherMap[t].held, notHeld: teacherMap[t].notHeld }; }), period: range.mode, periodLabel: crPeriodLabel(range), rangeStart: range.start, rangeEnd: range.end };
+  crScopeAgg(d2, semPick);
+  return d2;
+}
 function downloadCrReportPdf(){
   var dateStr = crSelectedDate();
-  var d = crReportData(dateStr);
-  var semPick = $("crSemSel") ? String($("crSemSel").value || "all") : "all";
-  crScopeSemester(d, semPick);
+  var d = crCurrentReport();
   if(!(window.jspdf && window.jspdf.jsPDF)){ window.print(); return; }
   var doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
   var W = doc.internal.pageSize.getWidth();
   doc.setFontSize(14); doc.setTextColor(13, 59, 94);
   doc.text("Department of Media and Communication", 40, 44);
   doc.setFontSize(11); doc.setTextColor(60, 60, 60);
-  doc.text("Karakoram International University \u2014 Class Report (by CRs)" + (d.semesterOnly ? " \u2014 Semester " + d.semesterOnly + " only" : ""), 40, 62);
+  doc.text("Karakoram International University \u2014 Class Report (by CRs)" + (d.period ? " \u2014 " + (d.period === "week" ? "Weekly Report" : "Monthly Report") : "") + (d.semesterOnly ? " \u2014 Semester " + d.semesterOnly + " only" : ""), 40, 62);
   doc.setFontSize(10);
-  doc.text(d.day + ", " + fmtDate(d.date) + " \u00B7 Total classes: " + d.counts.total + " \u00B7 Held: " + d.counts.held + " \u00B7 Not held: " + d.counts.notHeld + " \u00B7 Pending: " + d.counts.pending + (d.counts.canc ? " \u00B7 Cancelled by office: " + d.counts.canc : ""), 40, 80);
+  doc.text((d.period ? d.periodLabel : (d.day + ", " + fmtDate(d.date))) + " \u00B7 Total classes: " + d.counts.total + " \u00B7 Held: " + d.counts.held + " \u00B7 Not held: " + d.counts.notHeld + " \u00B7 Pending: " + d.counts.pending + (d.counts.canc ? " \u00B7 Cancelled by office: " + d.counts.canc : ""), 40, 80);
   var cols = [40, 190, 232, 322, 372, 452];
   var y = 104;
   function headerRow(){
@@ -1472,9 +1577,9 @@ function downloadCrReportPdf(){
   }
   function newPageIfNeeded(h){ if(y + h > 790){ doc.addPage(); y = 56; headerRow(); } }
   if(!d.rows.length){
-    doc.setFontSize(10); doc.text(d.semesterOnly ? "No Semester " + d.semesterOnly + " classes were scheduled for this date." : "No classes were scheduled for this date.", 40, y);
+    doc.setFontSize(10); doc.text(d.semesterOnly ? "No Semester " + d.semesterOnly + " classes were scheduled for " + (d.period ? "this period." : "this date.") : (d.period ? "No classes were scheduled for this period." : "No classes were scheduled for this date."), 40, y);
   }
-  crGroups(d.rows).forEach(function(g){
+  (d.period ? crAggGroups(d.rows) : crGroups(d.rows)).forEach(function(g){
     newPageIfNeeded(46);
     doc.setFillColor(232, 238, 252); doc.rect(40, y - 11, W - 80, 17, "F");
     doc.setFont(undefined, "bold"); doc.setFontSize(10); doc.setTextColor(13, 59, 94);
@@ -1484,8 +1589,8 @@ function downloadCrReportPdf(){
     g.rows.forEach(function(r){
       var subj = doc.splitTextToSize(r.subject || "", 145);
       var teach = doc.splitTextToSize(r.teacher || "", 86);
-      var tim = doc.splitTextToSize(r.time || "", 76);
-      var rep = doc.splitTextToSize(crStatusText(r.status) + (r.note ? " \u2014 " + r.note : ""), 98);
+      var tim = doc.splitTextToSize(r.agg ? (r.day + " " + r.time) : (r.time || ""), 76);
+      var rep = doc.splitTextToSize(r.agg ? crAggStatusText(r) : (crStatusText(r.status) + (r.note ? " \u2014 " + r.note : "")), 98);
       var lines = Math.max(subj.length, teach.length, rep.length, tim.length, 1);
       newPageIfNeeded(lines * 11 + 4);
       doc.text(subj, cols[0], y);
@@ -1511,7 +1616,7 @@ function downloadCrReportPdf(){
       y += 14;
     });
   }
-  doc.save("kiu-class-report-" + dateStr + (d.semesterOnly ? "-semester-" + d.semesterOnly : "") + ".pdf");
+  doc.save("kiu-class-report-" + (d.period ? (d.period === "week" ? "week-" + d.rangeStart + "_to_" + d.rangeEnd : "month-" + d.rangeStart.slice(0, 7)) : dateStr) + (d.semesterOnly ? "-semester-" + d.semesterOnly : "") + ".pdf");
 }
 function downloadCrReport(){
   var dateStr = crSelectedDate();
@@ -1523,20 +1628,22 @@ function downloadCrReport(){
   setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
 }
 function printCrReport(){
-  var d = crReportData(crSelectedDate());
-  crScopeSemester(d, $("crSemSel") ? String($("crSemSel").value || "all") : "all");
+  var d = crCurrentReport();
   var area = $("crPrintArea"); if(!area) return;
   var printRowHtml = function(r){
     return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.time) + "</td><td>" + crStatusText(r.status) + (r.note ? " — " + esc(r.note) : "") + "</td></tr>";
   };
-  var rows = crGroups(d.rows).map(function(g){
-    return '<tr><td colspan="6" style="font-weight:bold;background:#e8eefc">Semester ' + esc(g.sem) + ' \u2014 ' + g.counts.total + ' classes \u00B7 Held: ' + g.counts.held + ' \u00B7 Not held: ' + g.counts.notHeld + ' \u00B7 Pending: ' + g.counts.pending + (g.counts.canc ? ' \u00B7 Cancelled by office: ' + g.counts.canc : '') + '</td></tr>' + g.rows.map(printRowHtml).join("");
+  var printAggRowHtml = function(r){
+    return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.day) + " · " + esc(r.time) + "</td><td>" + esc(crAggStatusText(r)) + "</td></tr>";
+  };
+  var rows = (d.period ? crAggGroups(d.rows) : crGroups(d.rows)).map(function(g){
+    return '<tr><td colspan="6" style="font-weight:bold;background:#e8eefc">Semester ' + esc(g.sem) + ' \u2014 ' + g.counts.total + ' classes \u00B7 Held: ' + g.counts.held + ' \u00B7 Not held: ' + g.counts.notHeld + ' \u00B7 Pending: ' + g.counts.pending + (g.counts.canc ? ' \u00B7 Cancelled by office: ' + g.counts.canc : '') + '</td></tr>' + g.rows.map(d.period ? printAggRowHtml : printRowHtml).join("");
   }).join("");
   var tRows = d.teacherRows.map(function(t){ return "<tr><td>" + esc(t.teacher) + "</td><td>" + t.held + "</td><td>" + t.notHeld + "</td></tr>"; }).join("");
   area.innerHTML = "<h2 style='margin:0 0 2px'>Department of Media and Communication</h2>" +
-    "<div>Karakoram International University — Class Report (by CRs)" + (d.semesterOnly ? " — Semester " + d.semesterOnly + " only" : "") + "</div>" +
-    "<p><strong>" + esc(d.day) + ", " + esc(fmtDate(d.date)) + "</strong> · Total classes: " + d.counts.total + " · Held: " + d.counts.held + " · Not held: " + d.counts.notHeld + " · Pending: " + d.counts.pending + (d.counts.canc ? " · Cancelled by office: " + d.counts.canc : "") + "</p>" +
-    (d.rows.length ? "<table><thead><tr><th>Subject</th><th>Class</th><th>Teacher</th><th>Classroom</th><th>Time</th><th>CR Report</th></tr></thead><tbody>" + rows + "</tbody></table>" : "<p>" + (d.semesterOnly ? "No Semester " + d.semesterOnly + " classes were scheduled for this date." : "No classes were scheduled for this date.") + "</p>") +
+    "<div>Karakoram International University — Class Report (by CRs)" + (d.period ? " — " + (d.period === "week" ? "Weekly Report" : "Monthly Report") : "") + (d.semesterOnly ? " — Semester " + d.semesterOnly + " only" : "") + "</div>" +
+    "<p><strong>" + esc(d.period ? d.periodLabel : (d.day + ", " + fmtDate(d.date))) + "</strong> · Total classes: " + d.counts.total + " · Held: " + d.counts.held + " · Not held: " + d.counts.notHeld + " · Pending: " + d.counts.pending + (d.counts.canc ? " · Cancelled by office: " + d.counts.canc : "") + "</p>" +
+    (d.rows.length ? "<table><thead><tr><th>Subject</th><th>Class</th><th>Teacher</th><th>Classroom</th><th>Time</th><th>CR Report</th></tr></thead><tbody>" + rows + "</tbody></table>" : "<p>" + (d.semesterOnly ? "No Semester " + d.semesterOnly + " classes were scheduled for " + (d.period ? "this period." : "this date.") : (d.period ? "No classes were scheduled for this period." : "No classes were scheduled for this date.")) + "</p>") +
     (tRows ? "<h3>By teacher (reported classes)</h3><table><thead><tr><th>Teacher</th><th>Held</th><th>Not Held</th></tr></thead><tbody>" + tRows + "</tbody></table>" : "");
   document.body.classList.add("cr-printing");
   var done = function(){ document.body.classList.remove("cr-printing"); window.removeEventListener("afterprint", done); };
@@ -1546,6 +1653,7 @@ function printCrReport(){
 }
 $("crDate").addEventListener("change", renderCrReport);
 $("crSemSel").addEventListener("change", renderCrReport);
+$("crPeriod").addEventListener("change", renderCrReport);
 $("crTodayBtn").addEventListener("click", function(){ $("crDate").value = pktParts().date; renderCrReport(); });
 $("crViewBtn").addEventListener("click", renderCrReport);
 $("crDownloadBtn").addEventListener("click", downloadCrReportPdf);
