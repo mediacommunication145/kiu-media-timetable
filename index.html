@@ -1351,6 +1351,13 @@ function crReportData(dateStr){
 function crStatusText(st){
   return st === "held" ? "Held" : st === "not_held" ? "Not Held" : st === "cancelled" ? "Cancelled by office" : "Pending";
 }
+function crRepText(r){
+  if(r.status === "cancelled") return "Cancelled by office";
+  if(r.status === "pending") return "Not reported by CR";
+  var t = crStatusText(r.status);
+  if(r.rep && r.rep.by === "admin") t += " (marked by Admin)";
+  return t;
+}
 function crGroups(rows){
   var map = {}, order = [];
   (rows || []).forEach(function(r){
@@ -1457,7 +1464,7 @@ function crReportCsv(dateStr){
   crGroups(d.rows).forEach(function(g){
     lines.push("");
     lines.push("Semester " + g.sem + " (" + g.counts.total + " classes - Held " + g.counts.held + ", Not held " + g.counts.notHeld + ", Pending " + g.counts.pending + ", Cancelled by office " + g.counts.canc + ")");
-    g.rows.forEach(function(r){ lines.push([r.subject, r.classLabel, r.teacher, r.room, r.time, crStatusText(r.status), r.note].map(crCsvEsc).join(",")); });
+    g.rows.forEach(function(r){ lines.push([r.subject, r.classLabel, r.teacher, r.room, r.time, crRepText(r), r.note].map(crCsvEsc).join(",")); });
   });
   if(d.teacherRows.length){
     lines.push("");
@@ -1620,7 +1627,7 @@ function downloadCrReportPdf(){
       var subj = doc.splitTextToSize(r.subject || "", 145);
       var teach = doc.splitTextToSize(r.teacher || "", 86);
       var tim = doc.splitTextToSize(r.agg ? (r.day + " " + r.time) : (r.time || ""), 76);
-      var rep = doc.splitTextToSize(r.agg ? crAggStatusText(r) : (crStatusText(r.status) + (r.note ? " \u2014 " + r.note : "")), 98);
+      var rep = doc.splitTextToSize(r.agg ? crAggStatusText(r) : (crRepText(r) + (r.note ? " \u2014 " + r.note : "")), 98);
       var lines = Math.max(subj.length, teach.length, rep.length, tim.length, 1);
       newPageIfNeeded(lines * 11 + 4);
       doc.text(subj, cols[0], y);
@@ -1661,7 +1668,7 @@ function printCrReport(){
   var d = crCurrentReport();
   var area = $("crPrintArea"); if(!area) return;
   var printRowHtml = function(r){
-    return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.time) + "</td><td>" + crStatusText(r.status) + (r.note ? " — " + esc(r.note) : "") + "</td></tr>";
+    return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.time) + "</td><td>" + crRepText(r) + (r.note ? " — " + esc(r.note) : "") + "</td></tr>";
   };
   var printAggRowHtml = function(r){
     return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.day) + " · " + esc(r.time) + "</td><td>" + esc(crAggStatusText(r)) + "</td></tr>";
