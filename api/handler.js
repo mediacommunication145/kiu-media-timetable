@@ -752,6 +752,29 @@ module.exports = async function handler(req, res) {
         await saveMeta(state, 'crCodes', JSON.stringify(map));
         return send(res, 200, { ok: true, crCodes: map }, 'application/json');
       }
+      if (method === 'POST' && p === '/api/admin/cr-report') {
+        const b = await readBody(req);
+        const status = String(b.status || '');
+        if (status !== 'held' && status !== 'not_held') return send(res, 400, { error: 'Please choose Held or Not Held.' }, 'application/json');
+        const date = String(b.date || '');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return send(res, 400, { error: 'Please pick a valid date.' }, 'application/json');
+        const now = pktNow();
+        if (date > now.date) return send(res, 400, { error: 'You cannot mark a report for a future date.' }, 'application/json');
+        const state = await loadState();
+        const entry = findEntry(state, String(b.entryId || ''));
+        if (!entry) return send(res, 404, { error: 'Class not found.' }, 'application/json');
+        const onDate = entry.date ? entry.date === date : weekdayOf(date) === entry.day;
+        if (!onDate) return send(res, 400, { error: 'This class is not scheduled on that date.' }, 'application/json');
+        const db = buildDb(state);
+        if (db.cancellations.some(c => c.date === date && c.entryId === entry.id)) return send(res, 400, { error: 'This class was cancelled by the office, so no report is needed.' }, 'application/json');
+        const reports = await loadReports();
+        const ix = reports.findIndex(r => r.date === date && r.entryId === entry.id);
+        const note = b.note != null ? String(b.note || '').trim().slice(0, 200) : (ix >= 0 ? (reports[ix].note || '') : '');
+        const row = { date, entryId: entry.id, program: entry.program, semester: String(entry.semester), section: entry.section || '', subject: entry.subject, teacher: entry.teacher, room: entry.room, start: entry.start, end: entry.end, status, note, by: 'admin', at: new Date().toISOString() };
+        if (ix >= 0) reports[ix] = row; else reports.push(row);
+        await saveReports(reports);
+        return send(res, 200, { ok: true, report: row }, 'application/json');
+      }
       if (method === 'POST' && p === '/api/admin/cr-report/delete') {
         const b = await readBody(req);
         const reports = await loadReports();
