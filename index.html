@@ -487,7 +487,7 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
         <h2 style="margin:0">📋 Class Report — by CRs</h2>
         <button class="btn light small" type="button" id="crReportToggle" style="white-space:nowrap">Show Report ▼</button>
       </div>
-      <p class="sub">Which classes were actually held, as reported by the class CRs. Pick any date to check an old report, or choose the Weekly / Monthly report for a combined report of that whole period — reports are kept for 6 months. "Pending" means that class's CR has not reported yet.</p>
+      <p class="sub">Which classes were actually held, as reported by the class CRs. Pick any date to check an old report, or choose the Weekly / Monthly report for a combined report of that whole period — reports are kept for 6 months. "Pending" means that class's CR has not reported yet. If a CR forgets to report, the admin can mark the class in the Daily Report with the Mark Held / Mark Not Held buttons next to it.</p>
       <div id="crReportWrap" class="hidden">
       <div class="actions no-print" style="margin-bottom:10px">
         <input type="date" id="crDate" aria-label="Report date">
@@ -1390,7 +1390,13 @@ function renderCrReport(){
     else if(r.status === "not_held") statusHtml = '<span style="color:#a11"><strong>❌ Not Held</strong></span>' + (r.note ? '<div class="hint">' + esc(r.note) + "</div>" : "");
     else statusHtml = '<span style="color:#8a6508"><strong>⏳ Pending</strong> (CR has not reported yet)</span>';
     var clearBtn = r.rep ? ' <button class="btn small light" type="button" data-cr-clear="' + r.entryId + '">Clear</button>' : "";
-    return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.time) + "</td><td>" + statusHtml + clearBtn + "</td></tr>";
+    var byTag = (r.rep && r.rep.by === "admin") ? ' <span class="badge" style="background:#e8eefc;color:var(--navy)">by Admin</span>' : "";
+    var markBtns = "";
+    if(r.status !== "cancelled" && (db.entries || []).some(function(x){ return x.id === r.entryId; })){
+      if(r.status !== "held") markBtns += ' <button class="btn small light" type="button" data-cr-mark="held|' + r.entryId + '">\u2705 Mark Held</button>';
+      if(r.status !== "not_held") markBtns += ' <button class="btn small light" type="button" data-cr-mark="not_held|' + r.entryId + '">\u274C Mark Not Held</button>';
+    }
+    return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.time) + "</td><td>" + statusHtml + byTag + markBtns + clearBtn + "</td></tr>";
   };
   var aggRowHtml = function(r){
     return "<tr><td>" + esc(r.subject) + "</td><td>" + esc(r.classLabel) + "</td><td>" + esc(r.teacher) + "</td><td>" + esc(r.room) + "</td><td>" + esc(r.day) + " \u00B7 " + esc(r.time) + "</td><td>" + esc(crAggStatusText(r)) + "</td></tr>";
@@ -1405,6 +1411,12 @@ function renderCrReport(){
   box.querySelectorAll("[data-cr-clear]").forEach(function(b){
     b.addEventListener("click", function(){ crClearReport(b.getAttribute("data-cr-clear")); });
   });
+  box.querySelectorAll("[data-cr-mark]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var parts = String(b.getAttribute("data-cr-mark") || "").split("|");
+      if(parts.length === 2) crAdminMark(parts[1], parts[0]);
+    });
+  });
 }
 async function crClearReport(entryId){
   if(!confirm("Clear this CR report? The class will show as Pending again, and the CR can report it once more.")) return;
@@ -1414,6 +1426,24 @@ async function crClearReport(entryId){
     else { db.reports = (db.reports || []).filter(function(r){ return !(r.date === dateStr && r.entryId === entryId); }); saveLocal(); }
     renderCrReport();
   }catch(e){ alert(e.message); }
+}
+async function crAdminMark(entryId, status){
+  var dateStr = crSelectedDate();
+  var e = (db.entries || []).find(function(x){ return x.id === entryId; });
+  if(!e) return;
+  try{
+    if(serverMode){
+      var r = await api("/api/admin/cr-report", "POST", { entryId: entryId, date: dateStr, status: status });
+      db.crReports = (db.crReports || []).filter(function(x){ return !(x.entryId === entryId && x.date === dateStr); });
+      if(r && r.report) db.crReports.push(r.report);
+    } else {
+      var old = (db.reports || []).find(function(x){ return x.entryId === entryId && x.date === dateStr; });
+      db.reports = (db.reports || []).filter(function(x){ return !(x.entryId === entryId && x.date === dateStr); });
+      db.reports.push({ date: dateStr, entryId: entryId, program: e.program, semester: String(e.semester), section: e.section || "", subject: e.subject, teacher: e.teacher || "", room: e.room || "", start: e.start, end: e.end || "", status: status, note: old ? (old.note || "") : "", by: "admin", at: new Date().toISOString() });
+      saveLocal();
+    }
+    renderCrReport();
+  }catch(err){ alert(err.message); }
 }
 function crCsvEsc(v){ v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
 function crReportCsv(dateStr){
