@@ -390,7 +390,11 @@ td,th,.hint,.sub,.msg{overflow-wrap:break-word}
     <div class="card hidden" id="crPanelCard">
       <h2 id="crTitle">Today's Classes</h2>
       <p class="sub" id="crSub"></p>
-      <div id="crTimerBox" class="msg" style="display:none;background:#fff4d6;color:#8a6508;border:1px solid #ecd28f;font-weight:600">\u23F3 Time left to mark today's classes: <span id="crTimer">--:--:--</span> \u2014 marking every class within 24 hours (before midnight) is compulsory.</div>
+      <div id="crTimerBox" style="display:none;text-align:center;background:#fff4d6;border:1px solid #ecd28f;border-radius:12px;padding:10px 12px;margin-bottom:12px">
+        <div style="font-size:.85rem;font-weight:700;color:#8a6508">⏳ Time left to mark today's classes</div>
+        <div id="crTimer" style="font-size:2.4rem;font-weight:800;color:#8a6508;line-height:1.15;letter-spacing:2px">--:--:--</div>
+        <div style="font-size:.8rem;color:#8a6508">Marking within 24 hours is compulsory</div>
+      </div>
       <div id="crMsg"></div>
       <div id="crList"></div>
       <div class="actions" style="margin-top:12px">
